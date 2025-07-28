@@ -22,13 +22,14 @@ def main():
     # Encode training data
     encoded_training_data = bpe_encoder.encode(training_data)
     encoded_test_data = bpe_encoder.encode(test_data)
+    encoded_valid_data = bpe_encoder.encode(valid_data)
 
 
-    model = NGramModel(context_size=2)
+    model = NGramModel(n=2, lambdas=[0.04,0.96])
     model.fit(encoded_training_data)
     print(model.calculate_perplexity(encoded_test_data))
-    generated = model.generate_sequence(length=10, seed=("to", "_"))
-    print(re.sub('_', ' ', "".join(generated)))
+    # generated = model.generate_sequence(length=30, seed=("be_",))
+    # print(re.sub('_', ' ', "".join(generated)))
 
 
 if __name__ == '__main__':
