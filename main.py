@@ -1,6 +1,7 @@
 from utils.load_data import load_data
 from bpe.byte_pair_encoder import BytePairEncoder
 from ngram.n_gram_language_model import NGramModel
+import re
 
 def main():
     # Load the data
@@ -22,10 +23,13 @@ def main():
     encoded_training_data = bpe_encoder.encode(training_data)
     encoded_test_data = bpe_encoder.encode(test_data)
 
-    # Train n-gram model
-    trigram_model = NGramModel(context_size=1)
-    trigram_model.fit(encoded_training_data)
-    print(trigram_model.calculate_perplexity(encoded_test_data))
+
+    model = NGramModel(context_size=2)
+    model.fit(encoded_training_data)
+    print(model.calculate_perplexity(encoded_test_data))
+    generated = model.generate_sequence(length=10, seed=("to", "_"))
+    print(re.sub('_', ' ', "".join(generated)))
+
 
 if __name__ == '__main__':
     main()
