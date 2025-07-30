@@ -6,6 +6,11 @@ __pycache__/
 # models
 models/*
 
+playground/*
+
+# IDEA
+.idea/
+
 # C extensions
 *.so
 
