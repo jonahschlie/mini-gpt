@@ -12,9 +12,13 @@ def main():
     # Prepare data for neural n-gram
     vocab_size, train_data, valid_data, test_data = prepare_data(training_data, valid_data, test_data)
 
-    model = NeuralBigram(embedding_dimension=512, vocab_size=vocab_size, ngram_size=3, lr=0.5)
-    model.fit(train_data, epochs=40, batch_size=32, lr_decay=0.95)
-    print(model.perplexity())
+    model = NeuralBigram(embedding_dimension=512,
+                         vocab_size=vocab_size,
+                         ngram_size=3,
+                         lr=0.5,
+                         hidden_layer_size=256)
+    model.fit(train_data, epochs=30, batch_size=32, lr_decay=0.95)
+    print(model.perplexity(valid_data))
 
 if __name__ == '__main__':
     main()

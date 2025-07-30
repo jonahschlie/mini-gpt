@@ -2,27 +2,36 @@ import numpy as np
 
 class NeuralBigram:
 
-    def __init__(self, embedding_dimension, vocab_size, ngram_size, lr=1e-2):
+    def __init__(self, embedding_dimension, vocab_size, ngram_size, lr=1e-2, hidden_layer_size = 128):
         self.embedding_dimension = embedding_dimension
         self.vocab_size = vocab_size
         self.ngram_size = ngram_size
         self.lr = lr
+        self.hidden_layer_size = hidden_layer_size
 
         # Embedding: vocab_size → embedding_dimension
         self.embedding_matrix = np.random.randn(vocab_size, embedding_dimension) * 0.01
 
-        # Linear layer: (context_size * embedding_dim) → vocab_size
+        #Hidden Layer: (context_size * embedding_dim) → hidden layer size
         input_dim = (self.ngram_size - 1) * self.embedding_dimension
-        self.linear_W = np.random.randn(input_dim, vocab_size) * 0.01
-        self.linear_b = np.zeros((1, vocab_size))
+        self.linear_W1 = np.random.randn(input_dim, self.hidden_layer_size) * 0.01
+        self.linear_b1 = np.zeros((1, self.hidden_layer_size))
+
+        # Linear layer: hidden layer size → vocab_size
+        self.linear_W2 = np.random.randn(self.hidden_layer_size, self.vocab_size) * 0.01
+        self.linear_b2 = np.zeros((1, self.vocab_size))
 
     def forward(self, x, y=None, target=True):
         # Embedding lookup
         self.embeddings = self.embedding_matrix[x]  # (B, context_size, D)
         self.embeddings_flat = self.embeddings.reshape(x.shape[0], -1)  # (B, context_size*D)
 
-        # Linear projection
-        self.logits = self.embeddings_flat @ self.linear_W + self.linear_b  # (B, vocab_size)
+        # Hidden layer with tanh activation
+        self.hidden_layer = self.embeddings_flat @ self.linear_W1 + self.linear_b1
+        self.hidden_activation = np.tanh(self.hidden_layer)
+
+        # Linear projection to vocab size
+        self.logits = self.hidden_activation @ self.linear_W2 + self.linear_b2  # (B, vocab_size)
 
         # Softmax
         exp_logits = np.exp(self.logits - np.max(self.logits, axis=1, keepdims=True))
@@ -43,20 +52,33 @@ class NeuralBigram:
         dlogits[np.arange(B), y] -= 1
         dlogits /= B  # (B, vocab_size)
 
-        # -------- Gradients for linear layer --------
-        dW = self.embeddings_flat.T @ dlogits  # (context_size*D, vocab_size)
-        db = np.sum(dlogits, axis=0, keepdims=True)  # (1, vocab_size)
+        # -------- Gradients for output layer (W2, b2) --------
+        dW2 = self.hidden_activation.T @ dlogits  # (H, V)
+        db2 = np.sum(dlogits, axis=0, keepdims=True)  # (1, V)
 
-        # Gradient through embeddings_flat
-        demb_flat = dlogits @ self.linear_W.T  # (B, context_size*D)
-        demb = demb_flat.reshape(self.embeddings.shape)  # (B, context_size, D)
+        # -------- Backprop into hidden activation --------
+        dha = dlogits @ self.linear_W2.T  # (B, H)
 
-        # Update Embeddings
+        # -------- Backprop through tanh --------
+        dh = dha * (1 - self.hidden_activation ** 2)  # (B, H)
+
+        # -------- Gradients for hidden layer (W1, b1) --------
+        dW1 = self.embeddings_flat.T @ dh  # (C*D, H)
+        db1 = np.sum(dh, axis=0, keepdims=True)  # (1, H)
+
+        # -------- Backprop into embeddings --------
+        demb_flat = dh @ self.linear_W1.T  # (B, C*D)
+        demb = demb_flat.reshape(self.embeddings.shape)  # (B, C, D)
+
+        # -------- Parameter updates --------
+        # Embeddings
         np.add.at(self.embedding_matrix, x, -self.lr * demb)
-
-        # Update weights
-        self.linear_W -= self.lr * dW
-        self.linear_b -= self.lr * db
+        # Hidden layer
+        self.linear_W1 -= self.lr * dW1
+        self.linear_b1 -= self.lr * db1
+        # Output layer
+        self.linear_W2 -= self.lr * dW2
+        self.linear_b2 -= self.lr * db2
 
     def fit(self, data, epochs=10, batch_size=32, lr_decay=1.0):
         """
