@@ -35,4 +35,19 @@ def prepare_data(training_data, valid_data, test_data):
         bpe_encoder.fit(training_data)
         bpe_encoder.save()
 
-    return len(bpe_encoder.bpe_codes), bpe_encoder.encode(training_data), bpe_encoder.encode(valid_data), bpe_encoder.encode(test_data)
+    # Encode datasets
+    train_tokens = bpe_encoder.encode(training_data)
+    valid_tokens = bpe_encoder.encode(valid_data)
+    test_tokens = bpe_encoder.encode(test_data)
+
+    # Calculate metrics for each dataset (printing results)
+    print("Metrics on Training Data")
+    bpe_encoder.calculate_metrics(training_data, tokens=train_tokens, verbose=True)
+
+    print("Metrics on Validation Data")
+    bpe_encoder.calculate_metrics(valid_data, tokens=valid_tokens, verbose=True)
+
+    print("Metrics on Test Data")
+    bpe_encoder.calculate_metrics(test_data, tokens=test_tokens, verbose=True)
+
+    return len(bpe_encoder.bpe_codes), train_tokens, valid_tokens, test_tokens

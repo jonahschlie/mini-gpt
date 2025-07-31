@@ -59,7 +59,6 @@ class BytePairEncoder:
         """
         corpus = text_normalization(corpus)
         corpus = character_tokenization(corpus)
-        num_chars = len(corpus)
 
         result = []
         i = 0
@@ -76,13 +75,34 @@ class BytePairEncoder:
                 result.append(corpus[i])
                 i += 1
 
-        average_token_length = num_chars / len(result)
-        print(f"ATL: {average_token_length}")
 
         if self.neural:
             return [self.stoi[char] for char in result]
         else:
             return result
+
+
+    def calculate_metrics(self, corpus, tokens=None, verbose=True):
+        """
+        Calculate ATL and Tokens per Word for the given text.
+
+        :param corpus: Original text
+        :param tokens: Optional pre-tokenized list (if already encoded)
+        :param verbose: If True, prints metrics
+        :return: (atl, tpw)
+        """
+        tokens = tokens or self.encode(corpus)
+        num_chars = len(text_normalization(corpus))
+        num_words = len(corpus.split())
+
+        atl = num_chars / len(tokens) if tokens else 0
+        tpw = len(tokens) / num_words if num_words > 0 else 0
+
+        if verbose:
+            print(f"ATL: {atl}")
+            print(f"Tokens per word: {tpw}")
+
+        return atl, tpw
 
 
     def save(self, filepath: str = None):
@@ -104,6 +124,7 @@ class BytePairEncoder:
             json.dump(data, f, ensure_ascii=False, indent=2)
         if self.verbose:
             print(f"BPE saved to {path}")
+
 
     def load(self, filepath: str = None):
         """
