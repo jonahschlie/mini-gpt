@@ -134,11 +134,14 @@ class NeuralNGram:
 
             epoch_loss /= train_num_samples
 
-            val_indices = np.random.randint(0, val_num_samples, size=batch_size)
-            x_val_batch = val_contexts[val_indices]
-            y_val_batch = val_targets[val_indices]
-            val_loss, _ = self.forward(x_val_batch, y_val_batch, target=True)
-            print('Validation Loss: ' + str(val_loss))
+            num_val_batches = int(np.ceil(val_num_samples / batch_size))
+            val_loss = 0.0
+            for i in range(num_val_batches):
+                start = i * batch_size
+                end = min((i + 1) * batch_size, val_num_samples)
+                loss, _ = self.forward(val_contexts[start:end], val_targets[start:end], target=True)
+                val_loss += loss * (end - start)
+            val_loss /= val_num_samples
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 best_embeddings = self.embedding_matrix.copy()
@@ -162,7 +165,7 @@ class NeuralNGram:
 
             if not stop_training:
                 self.lr *= lr_decay  # Optional learning rate decay
-            print(f"Epoch {epoch+1}/{epochs} - loss: {epoch_loss:.4f} - lr: {self.lr:.6f}")
+            print(f"Epoch {epoch+1}/{epochs} - loss: {epoch_loss:.4f} - val_loss: {val_loss:.4f} - lr: {self.lr:.6f}")
 
             if stop_training:
                 break

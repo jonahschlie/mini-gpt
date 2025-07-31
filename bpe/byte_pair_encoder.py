@@ -1,4 +1,3 @@
-# Import helper functions for preprocessing and BPE operations
 from utils.bpe.normalization import text_normalization
 from utils.bpe.char_tokenization import character_tokenization
 from utils.bpe.get_most_frequent_token_pair import get_most_frequent_pair
@@ -7,7 +6,6 @@ from utils.bpe.merge_token_pair_in_corpus import update_corpus
 import json
 import os
 
-#TODO: Store dictionaries also in json file..
 class BytePairEncoder:
     def __init__(self, vocab_size: int, verbose: bool, model_path: str = None, neural=False):
         """
@@ -61,6 +59,7 @@ class BytePairEncoder:
         """
         corpus = text_normalization(corpus)
         corpus = character_tokenization(corpus)
+        num_chars = len(corpus)
 
         result = []
         i = 0
@@ -76,6 +75,9 @@ class BytePairEncoder:
             else:
                 result.append(corpus[i])
                 i += 1
+
+        average_token_length = num_chars / len(result)
+        print(f"ATL: {average_token_length}")
 
         if self.neural:
             return [self.stoi[char] for char in result]

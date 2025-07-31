@@ -1,9 +1,7 @@
 from utils.load_data import load_data
-from bpe.byte_pair_encoder import BytePairEncoder
-from ngram.n_gram_language_model import NGramModel
 from ngram.neural_ngram import NeuralNGram
-import re
 from utils.ngram.preprocessing import prepare_data
+from ngram.pytorch_bigram import NeuralNGramTorch
 
 def main():
     # Load the data
@@ -12,13 +10,20 @@ def main():
     # Prepare data for neural n-gram
     vocab_size, train_data, valid_data, test_data = prepare_data(training_data, valid_data, test_data)
 
-    model = NeuralNGram(embedding_dimension=512,
+
+    model = NeuralNGram(embedding_dimension=64,
                          vocab_size=vocab_size,
                          ngram_size=3,
                          lr=0.5,
-                         hidden_layer_size=256)
+                         hidden_layer_size=128)
     model.fit(train_data, valid_data, patience=5, epochs=50, batch_size=32, lr_decay=0.95)
-    print(model.perplexity(train_data))
+    print(model.perplexity(test_data))
+
+    '''
+    model = NeuralNGramTorch(vocab_size=vocab_size, ngram_size=3, embedding_dim=64, hidden_dim=128, lr=0.5)
+    model.fit(train_data, valid_data, epochs=50, batch_size=32, patience=5, lr_decay=0.95)
+    print("Perplexity:", model.perplexity(valid_data))  
+    '''
 
 if __name__ == '__main__':
     main()
