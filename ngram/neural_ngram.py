@@ -1,6 +1,6 @@
 import numpy as np
 
-class NeuralBigram:
+class NeuralNGram:
 
     def __init__(self, embedding_dimension, vocab_size, ngram_size, lr=1e-2, hidden_layer_size = 128):
         self.embedding_dimension = embedding_dimension
@@ -80,29 +80,49 @@ class NeuralBigram:
         self.linear_W2 -= self.lr * dW2
         self.linear_b2 -= self.lr * db2
 
-    def fit(self, data, epochs=10, batch_size=32, lr_decay=1.0):
+    def fit(self, train_data, valid_data, patience=5, epochs=10, batch_size=32, lr_decay=1.0):
         """
         Epoch-based training with shuffling
         """
-        data = np.array(data, dtype=np.int64)
-        num_samples = len(data) - self.ngram_size + 1
+
+        #Initialize best model configuration for restoring after patience time
+        best_embeddings = self.embedding_matrix.copy()
+        best_hidden_weights = self.linear_W1.copy()
+        best_hidden_bias = self.linear_b1.copy()
+        best_output_weights = self.linear_W2.copy()
+        best_output_bias = self.linear_b2.copy()
+
+        best_val_loss = float('inf')
+
+        wait = 0
+        stop_training = False
+
+        # Training Data Preparation
+        train_data = np.array(train_data, dtype=np.int64)
+        train_num_samples = len(train_data) - self.ngram_size + 1
+
+        val_data = np.array(valid_data, dtype=np.int64)
+        val_num_samples = len(val_data) - self.ngram_size + 1
 
         # Precompute all n-grams once
-        contexts = np.stack([data[i:i+self.ngram_size-1] for i in range(num_samples)])
-        targets = np.array([data[i+self.ngram_size-1] for i in range(num_samples)])
+        contexts = np.stack([train_data[i:i+self.ngram_size-1] for i in range(train_num_samples)])
+        targets = np.array([train_data[i+self.ngram_size-1] for i in range(train_num_samples)])
+
+        val_contexts = np.stack([val_data[i:i + self.ngram_size - 1] for i in range(val_num_samples)])
+        val_targets = np.array([val_data[i + self.ngram_size - 1] for i in range(val_num_samples)])
 
         for epoch in range(epochs):
             # Shuffle data each epoch
-            perm = np.random.permutation(num_samples)
+            perm = np.random.permutation(train_num_samples)
             contexts_shuffled = contexts[perm]
             targets_shuffled = targets[perm]
 
             epoch_loss = 0.0
-            num_batches = int(np.ceil(num_samples / batch_size))
+            num_batches = int(np.ceil(train_num_samples / batch_size))
 
             for b in range(num_batches):
                 start = b * batch_size
-                end = min((b+1) * batch_size, num_samples)
+                end = min((b+1) * batch_size, train_num_samples)
                 x_batch = contexts_shuffled[start:end]
                 y_batch = targets_shuffled[start:end]
 
@@ -111,9 +131,41 @@ class NeuralBigram:
                 self.backwards(x_batch, y_batch)
                 epoch_loss += loss * (end - start)
 
-            epoch_loss /= num_samples
-            self.lr *= lr_decay  # Optional learning rate decay
+
+            epoch_loss /= train_num_samples
+
+            val_indices = np.random.randint(0, val_num_samples, size=batch_size)
+            x_val_batch = val_contexts[val_indices]
+            y_val_batch = val_targets[val_indices]
+            val_loss, _ = self.forward(x_val_batch, y_val_batch, target=True)
+            print('Validation Loss: ' + str(val_loss))
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                best_embeddings = self.embedding_matrix.copy()
+                best_hidden_weights = self.linear_W1.copy()
+                best_hidden_bias = self.linear_b1.copy()
+                best_output_weights = self.linear_W2.copy()
+                best_output_bias = self.linear_b2.copy()
+                wait = 0
+            else:
+                wait += 1
+                if wait >= patience:
+                    print("Early stopping!")
+                    self.embedding_matrix = best_embeddings
+                    self.linear_W1 = best_hidden_weights
+                    self.linear_b1 = best_hidden_bias
+                    self.linear_W2 = best_output_weights
+                    self.linear_b2 = best_output_bias
+                    stop_training = True
+                    break
+
+
+            if not stop_training:
+                self.lr *= lr_decay  # Optional learning rate decay
             print(f"Epoch {epoch+1}/{epochs} - loss: {epoch_loss:.4f} - lr: {self.lr:.6f}")
+
+            if stop_training:
+                break
 
     def perplexity(self, data, batch_size=1) -> float:
         """
