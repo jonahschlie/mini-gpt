@@ -297,6 +297,28 @@ The prepare_data function initializes the Byte Pair Encoder from above and attem
 <br>
 
 ###### classical_ngram/main.py
+In the main.py inside the classical_ngram folder we concetrated on three different things.
+First we evaluated how the perplexity would change on different ngram sizes and different number of merges for the
+byte pair tokenizer.
+Because while this evaluation the interpolation weights were equal for all ngram sizes if the ngram was bigger a unigram
+we secondly investigated the optimal interpolation weights for different ngram sizes bigger than 1 with a fixed `k=1000`.
+Lastly we than used one of these interpolation optimised models to generate sequence based on a given context input, that fits
+to the ngram size.
+
+1. **Perplexity Evaluation of different BPE merges for different N-gram sizes:** <br>
+   You can see the results of the evaluation in the figure below.
+   ![Model performance plot](utils/figures/perplexity_ngrams_classic.png)
+   
+   For the Shakespeare dataset (~40 unique characters, ~864k training characters), perplexity appears lowest at k = 0
+   (character-level) and tends to increase with larger BPE merge sizes. A likely reason is that increasing k expands the
+   vocabulary, but with fixed training data this may produce sparser n-gram counts, where many token combinations are 
+   rarely seen or absent entirely. This effect may be more pronounced for higher-order n-grams, leading to reduced 
+   generalization on the test set. Given Shakespeare’s repetitive and character-limited nature, character-level tokenization
+   might simply be more efficient for classical n-gram models. <br>
+
+
+2. **Interpolation weights optimization** <br>
+   
 
 
 ### Neural N-Gram

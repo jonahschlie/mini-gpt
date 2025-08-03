@@ -1,62 +1,127 @@
 from utils.load_data import load_data
 from classical_ngram.utils.preprocessing import prepare_data
-from bpe.byte_pair_encoder import BytePairEncoder
 from classical_ngram.n_gram_language_model import NGramModel
 from datasets import load_dataset
+import matplotlib.pyplot as plt
+from copy import deepcopy
+from classical_ngram.n_gram_language_model import NGramModel
 
-def k_optimization(training_data, valid_data, test_data):
-    best_dicts = {}
+import numpy as np
+from copy import deepcopy
+from classical_ngram.n_gram_language_model import NGramModel
+
+def optimize_interpolation_weights(training_tokens, valid_tokens, n, step=0.1, max_iter=50, patience=5):
+    """
+    Greedy search with patience:
+    - Only update lambdas if perplexity improves.
+    - Stop if no improvement for `patience` iterations.
+    """
+    if n <= 1:
+        raise ValueError("Interpolation weights are only relevant for n > 1")
+
+    # Initialize equal weights
+    lambdas = np.ones(n) / n
+    model = NGramModel(n=n, lambdas=lambdas.tolist())
+    model.fit(training_tokens)
+    best_perplexity = model.calculate_perplexity(valid_tokens)
+    best_lambdas = lambdas.copy()
+
+    no_improve_count = 0
+    iteration = 0
+
+    while iteration < max_iter and no_improve_count < patience:
+        iteration += 1
+        improved = False
+
+        for i in range(n):
+            for delta in [+step, -step]:
+                new_lambdas = lambdas.copy()
+                new_lambdas[i] += delta
+                if np.any(new_lambdas < 0):
+                    continue
+                new_lambdas = new_lambdas / new_lambdas.sum()
+
+                model = NGramModel(n=n, lambdas=new_lambdas.tolist())
+                model.fit(training_tokens)
+                perplexity = model.calculate_perplexity(valid_tokens)
+
+                # Only accept move if perplexity improves
+                if perplexity < best_perplexity:
+                    best_perplexity = perplexity
+                    best_lambdas = new_lambdas.copy()
+                    lambdas = new_lambdas.copy()
+                    improved = True
+
+        if improved:
+            no_improve_count = 0
+        else:
+            no_improve_count += 1
+
+        print(f"Iteration {iteration}: lambdas={np.round(lambdas, 3)}, "
+              f"best_perplexity={best_perplexity:.4f}, "
+              f"no_improve_count={no_improve_count}")
+
+    return best_lambdas.tolist(), best_perplexity
+
+def perplexity_comparison(training_data, valid_data, test_data):
+    perplexity_dict = {}
     ngram_size = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     for size in ngram_size:
-        k =0
-        best_k = k
         step = 200
-        best_perplexity = float('inf')
-        no_improve_count = 0
-        max_no_improve = 3
 
-        while True:
+        for k in range(0,2200, step):
             # Train BPE with current k
-            _, training_tokens, _, test_tokens = prepare_data(training_data, valid_data, test_data, vocab_size=k, datatype='wikitext', neural=False)
+            _, training_tokens, _, test_tokens = prepare_data(training_data, valid_data, test_data, vocab_size=k, neural=False)
 
             # Train N-gram on BPE tokens
             ngram = NGramModel(n=size)
             ngram.fit(training_tokens)
             perplexity = ngram.calculate_perplexity(test_tokens)
 
-            # Early stopping
-            if perplexity < best_perplexity:
-                # print(f"Perplexity {perplexity} for ngram size {size}")
-                best_perplexity = perplexity
-                best_k = k
-                no_improve_count = 0
-            else:
-                print(f"Perplexity {perplexity} for ngram size {size} with k={k}")
-                no_improve_count += 1
+            if size not in perplexity_dict:
+                perplexity_dict[size] = []
+            perplexity_dict[size].append(perplexity)
 
-            if no_improve_count >= max_no_improve:
-                print(f"N={size}: stopping at best k={best_k}, perplexity={best_perplexity:.4f}")
-                best_dicts[size] = best_k
-                break
-
-            k += step
-
-    return best_dicts
+    return perplexity_dict
 
 
 def main():
     # Load the data
     test_string, full_data, training_data, test_data, valid_data = load_data()
 
+    # Fixed BPE vocab_size
+    vocab_size = 1000
+    _, train_tokens, valid_tokens, _ = prepare_data(training_data, valid_data, test_data, vocab_size=vocab_size,
+                                                    neural=False)
 
+    # Optimize interpolation for trigram
+    lambdas, best_perplexity = optimize_interpolation_weights(train_tokens, valid_tokens, n=2, step=0.1, patience=5)
+    print(f"Optimal trigram lambdas: {lambdas}, best perplexity: {best_perplexity:.4f}")
+
+
+    '''
     # Load the modern english wikitext data
     wiki_dataset = load_dataset('wikitext', 'wikitext-2-raw-v1')
     modern_training_data = ' '.join(wiki_dataset['train']['text'])[:len(training_data)*5]
     modern_valid_data = ' '.join(wiki_dataset['validation']['text'])[:len(valid_data)*5]
     modern_test_data = ' '.join(wiki_dataset['test']['text'])[:len(test_data)*5]
+    
+    
+    perplexity = perplexity_comparison(training_data, valid_data, test_data)
+    print(perplexity)
 
-    best_k = k_optimization(modern_training_data, modern_valid_data, modern_test_data)
-    print(best_k)
+    for size, values in perplexity.items():
+        ks = list(range(0, 2200, 200))
+        plt.plot(ks[:len(values)], values, label=f'N={size}')
+
+    plt.xlabel('BPE merges (k)')
+    plt.ylabel('Perplexity')
+    plt.title('Perplexity vs BPE merges for different N-gram sizes')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+    '''
+
 
 
 if __name__ == '__main__':
