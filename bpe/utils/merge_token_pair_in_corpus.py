@@ -1,12 +1,15 @@
 def update_corpus(tokenized_corpus, first_char, second_char):
     """
-    Find a given pair of letters within the corpus and replace them with a single merged string.
+    Merge all occurrences of a given adjacent token pair into a single token
+    within the tokenized corpus.
+
     Args:
-        tokenized_corpus (list of str): A list of tokens (strings) to analyze.
-        first_char (str): first string in target keyword (can be more than one character)
-        second_char (str): second string in target keyword (can be more than one character)
+        tokenized_corpus (list of str): A list of tokens to update.
+        first_char (str): The first token in the target pair.
+        second_char (str): The second token in the target pair.
+
     Returns:
-        list of tuple: A list of ((token1, token2), count) tuples sorted by count.
+        list of str: The updated tokenized corpus after merging the token pair.
     """
     index_to_delete = []
     for letter_index in range(len(tokenized_corpus) - 1):

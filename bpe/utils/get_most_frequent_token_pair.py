@@ -1,12 +1,14 @@
 def get_most_frequent_pair(tokenized_corpus):
     """
-    Count and rank adjacent token pairs in a tokenized corpus.
-    Skips any token pairs where the first token ends with an underscore (`_`).
-    Returns a list of pairs sorted by descending frequency.
+    Count and rank adjacent token pairs in a tokenized corpus and
+    return the most frequent one. Skips token pairs where the
+    first token ends with an underscore ('_').
+
     Args:
         tokenized_corpus (list of str): A list of tokens (strings) to analyze.
+
     Returns:
-        list of tuple: A list of ((token1, token2), count) tuples sorted by count.
+        tuple: The most frequent adjacent token pair as (token1, token2).
     """
     pair_dict = {}
     for letter in range(len(tokenized_corpus) - 1):

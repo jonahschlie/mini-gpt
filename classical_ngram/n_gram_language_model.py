@@ -76,20 +76,21 @@ class NGramModel:
 
         prob = 0.0
         for order in sorted(active_orders, reverse=True):
+            # get the weight for this order
             lambda_weight = self.lambdas[order - 1]
-            if lambda_weight == 0:
+            if lambda_weight == 0: # if no lambda skip this one
                 continue
 
-            if order == 1:  # unigram probability
-                prob_order = (self.unigram[word] + 1) / (sum(self.unigram.values()) + self.vocab_size)
+            if order == 1:
+                prob_order = (self.unigram[word] + 1) / (sum(self.unigram.values()) + self.vocab_size) # laplace smoothing on unigram
             else:
-                context_slice = tuple(context[-(order - 1):])
+                context_slice = tuple(context[-(order - 1):]) # get the context we are focusing at (trigram, bigram etc.)
                 count_context = self.context_counts[order].get(context_slice, 0)
                 count_word = self.ngrams[order][context_slice].get(word, 0)
                 if count_word > 0:
                     prob_order = count_word / count_context
                 else:
-                    # Back off to lower-order probability
+                    # Back off to unigram probability with laplace smoothing
                     prob_order = alpha * (self.unigram[word] + 1) / (sum(self.unigram.values()) + self.vocab_size)
             prob += lambda_weight * prob_order
 

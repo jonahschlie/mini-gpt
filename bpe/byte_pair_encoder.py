@@ -1,7 +1,7 @@
-from utils.bpe.normalization import text_normalization
-from utils.bpe.char_tokenization import character_tokenization
-from utils.bpe.get_most_frequent_token_pair import get_most_frequent_pair
-from utils.bpe.merge_token_pair_in_corpus import update_corpus
+from bpe.utils.normalization import text_normalization
+from bpe.utils.char_tokenization import character_tokenization
+from bpe.utils.get_most_frequent_token_pair import get_most_frequent_pair
+from bpe.utils.merge_token_pair_in_corpus import update_corpus
 
 import json
 import os
@@ -33,8 +33,8 @@ class BytePairEncoder:
         self.bpe_codes = sorted(list(set("".join(tokenized_corpus))), key=len, reverse=True)
 
         for i in range(self.vocab_size):
-            if not self.verbose:
-                print(str(i + 1) + 'th iteration')
+            # if self.verbose:
+                # print(str(i + 1) + 'th iteration')
 
             most_frequent_pair = get_most_frequent_pair(tokenized_corpus)
             new_code = most_frequent_pair[0] + most_frequent_pair[1]

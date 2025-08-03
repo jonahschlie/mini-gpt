@@ -1,14 +1,14 @@
 from utils.load_data import load_data
 from ngram.neural_ngram import NeuralNGram
-from utils.ngram.preprocessing import prepare_data
-from ngram.pytorch_bigram import NeuralNGramTorch
+from classical_ngram.utils.preprocessing import prepare_data
+
 
 def main():
     # Load the data
     test_string, full_data, training_data, test_data, valid_data = load_data()
 
     # Prepare data for neural n-gram
-    vocab_size, train_data, valid_data, test_data = prepare_data(training_data, valid_data, test_data)
+    vocab_size, train_data, valid_data, test_data = prepare_data(training_data, valid_data, test_data, vocab_size=1000, datatype='shakespeare', neural=True)
 
 
     model = NeuralNGram(embedding_dimension=64,
