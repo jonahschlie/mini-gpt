@@ -10,6 +10,29 @@ import numpy as np
 from copy import deepcopy
 from classical_ngram.n_gram_language_model import NGramModel
 
+def sequence_generation(context: list, train_tokens: list) -> list:
+    """
+    Generate a sequence from the trained N-gram model given an initial context.
+
+    Args:
+        context (list): A list of tokens (words/subwords/characters) to start generation from.
+        train_tokens (list): A list of tokens (words/subwords/characters) to fit the ngram.
+
+    Returns:
+        str: Generated sequence as a string.
+    """
+
+    # Use a trigram model for generation (you can adjust n)
+    n = 3
+    model = NGramModel(n=n, lambdas=[0.0, 0.488, 0.507])
+    model.fit(train_tokens)
+
+    # Generate a sequence of up to 20 tokens using argmax prediction
+    generated_tokens = model.generate_sequence(seed=tuple(context), sample=True)
+
+    return generated_tokens
+
+
 def optimize_interpolation_weights(training_tokens, valid_tokens, n, step=0.1, max_iter=50, patience=5):
     """
     Greedy search with patience:
@@ -57,9 +80,9 @@ def optimize_interpolation_weights(training_tokens, valid_tokens, n, step=0.1, m
         else:
             no_improve_count += 1
 
-        print(f"Iteration {iteration}: lambdas={np.round(lambdas, 3)}, "
-              f"best_perplexity={best_perplexity:.4f}, "
-              f"no_improve_count={no_improve_count}")
+        #print(f"Iteration {iteration}: lambdas={np.round(lambdas, 3)}, "
+              #f"best_perplexity={best_perplexity:.4f}, "
+              #f"no_improve_count={no_improve_count}")
 
     return best_lambdas.tolist(), best_perplexity
 
@@ -91,12 +114,15 @@ def main():
 
     # Fixed BPE vocab_size
     vocab_size = 1000
-    _, train_tokens, valid_tokens, _ = prepare_data(training_data, valid_data, test_data, vocab_size=vocab_size,
+    bpe_encoder, _, train_tokens, valid_tokens, _ = prepare_data(training_data, valid_data, test_data, vocab_size=vocab_size,
                                                     neural=False)
 
-    # Optimize interpolation for trigram
-    lambdas, best_perplexity = optimize_interpolation_weights(train_tokens, valid_tokens, n=2, step=0.1, patience=5)
-    print(f"Optimal trigram lambdas: {lambdas}, best perplexity: {best_perplexity:.4f}")
+    # Provide an initial context (adjust this as needed for testing)
+    initial_context = ["shall_", "i_"]
+    generated_sequence = bpe_encoder.decode(sequence_generation(initial_context, train_tokens))
+
+    print("Initial context:", " ".join(initial_context))
+    print("Generated sequence:", generated_sequence)
 
 
     '''
@@ -106,7 +132,14 @@ def main():
     modern_valid_data = ' '.join(wiki_dataset['validation']['text'])[:len(valid_data)*5]
     modern_test_data = ' '.join(wiki_dataset['test']['text'])[:len(test_data)*5]
     
+    # Optimize interpolation for different sized n-grams
+    sizes = np.arange(2,11)
+    for size in sizes:
+        lambdas, best_perplexity = optimize_interpolation_weights(train_tokens, valid_tokens, n=size, step=0.1, patience=5)
+        print(f"Optimal {size}-gram lambdas: {lambdas}, best perplexity: {best_perplexity:.4f}")
     
+    
+    # Perplexity Comparison
     perplexity = perplexity_comparison(training_data, valid_data, test_data)
     print(perplexity)
 

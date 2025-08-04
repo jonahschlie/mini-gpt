@@ -81,6 +81,26 @@ class BytePairEncoder:
         else:
             return result
 
+    def decode(self, tokens):
+        """
+        Decode a sequence of tokens or token indices back to a human-readable string.
+
+        Args:
+            tokens (list): List of tokens (strings) or indices (if neural=True).
+
+        Returns:
+            str: Decoded text string.
+        """
+        # If neural is enabled and tokens are indices, map them back to subwords
+        if self.neural and all(isinstance(t, int) for t in tokens):
+            tokens = [self.itos[t] for t in tokens]
+
+        # Join tokens and replace underscores with spaces
+        text = "".join(tokens)
+        text = text.replace("_", " ")
+
+        return text
+
 
     def calculate_metrics(self, corpus, tokens=None, verbose=True):
         """

@@ -119,30 +119,44 @@ class NGramModel:
 
         return math.exp(-total_log_prob / count) if count > 0 else float('inf')
 
-    def predict_next_word(self, context):
+    def predict_next_word(self, context, sample=False):
         """
-        Predict the most likely next word for a given context.
+        Predict the next word given a context using interpolated probabilities.
 
         Args:
             context (list or tuple): Previous words (up to n-1).
+            sample (bool): If True, sample next word by probability distribution, else use argmax.
 
         Returns:
             str: Predicted next word.
         """
         context = tuple(context[-(self.n - 1):])
-        candidates = self.ngrams[self.n].get(context, {})
-        if not candidates:
-            return random.choices(list(self.unigram.keys()), weights=self.unigram.values())[0]
-        return max(candidates, key=candidates.get)
+        # Compute interpolated probability for every word in the vocabulary
+        candidates = list(self.unigram.keys())  # Use all unigrams as candidates
 
-    def generate_sequence(self, length=20, seed=None):
+        probs = [self.probability(context, w) for w in candidates]
+        total = sum(probs)
+        if total == 0.0:
+            # fallback to uniform distribution if all probabilities zero
+            probs = [1.0 / len(candidates)] * len(candidates)
+            total = 1.0
+        else:
+            # Renormalize in case of floating point drift
+            probs = [p / total for p in probs]
+
+        if sample:
+            return random.choices(candidates, weights=probs, k=1)[0]
+        max_idx = max(range(len(probs)), key=lambda i: probs[i])
+        return candidates[max_idx]
+
+    def generate_sequence(self, seed=None, sample=False):
         """
-        Generate a sequence of words using the model.
+        Generate a sequence of words using the model until length or end-of-sequence token.
 
         Args:
-            length (int): Number of words to generate.
+            length (int): Max number of words to generate.
             seed (tuple, optional): Initial context of length n-1.
-                                    If None, one is randomly selected.
+            sample (bool): If True, sample next word by probability distribution, else use argmax.
 
         Returns:
             list: Generated word sequence including the seed.
@@ -152,9 +166,15 @@ class NGramModel:
         elif len(seed) != self.n - 1:
             raise ValueError(f"Seed must have length {self.n - 1}")
         sequence = list(seed)
-        for _ in range(length):
-            next_word = self.predict_next_word(sequence[-(self.n - 1):])
+        while True:
+            next_word = self.predict_next_word(sequence[-(self.n - 1):], sample=sample)
             sequence.append(next_word)
+            # Stop if an end-of-sequence token (contains '.', '?', or '!') is generated
+            if any(punct in next_word for punct in [".", "?", "!"]):
+                break
+            if len(sequence) > 20000:
+                print(len(sequence))
+                break
         return sequence
 
     def save(self, filepath: str = None):

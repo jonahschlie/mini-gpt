@@ -17,4 +17,4 @@ def prepare_data(training_data, valid_data, test_data, vocab_size=1000, datatype
     valid_tokens = bpe_encoder.encode(valid_data)
     test_tokens = bpe_encoder.encode(test_data)
 
-    return len(bpe_encoder.bpe_codes), train_tokens, valid_tokens, test_tokens
+    return bpe_encoder, len(bpe_encoder.bpe_codes), train_tokens, valid_tokens, test_tokens
