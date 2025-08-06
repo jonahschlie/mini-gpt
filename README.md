@@ -16,16 +16,15 @@ The repository is mainly structured along the 4 mentioned milestones as you can 
 mini-gpt/  
 ├── data/              # shakespeare text data and modern corpus
 ├── bpe/               # Code for BPE (Milestone 1)
-├── ngram/             # Classical N-Gram Model impelmentation
-├── neural_ngram/      # Classical and Neural N-Gram Model impelmentation
-├── gpt /              # The GPT implementation
+├── models/            # 
+├── classical_ngram/   # Classical N-Gram Model implementation (milestone 2)
+├── neural_ngram/      # Classical and Neural N-Gram Model implementation (milestone 3)
+├── gpt /              # The GPT implementation (milestone 4)
 ├── utils/             # Functions that are used across all milestones  
 ├── requirements.txt/  # list of needed python packages to run the code 
 ├── main.py            # The whole GPT pipeline + test generation
 └── README.md          # Technical Report
 ```
-
-
 Each milestone folder contains the model implementation, a utils folder with general-purpose functions (kept separate from the model class for best practices), and a main script used for testing, optimization, and experimentation (details provided later).
 
 ## Getting Started
@@ -46,7 +45,8 @@ python -m main
 To run the main script of each milestone independently use the following command in the repos root directory:
 ```bash
 python -m bpe.main
-python -m ngram.main
+python -m classical_ngram.main
+python -m neural_ngram.main
 python -m gpt.main
 ```
 What the actual scripts are about will be described detailed in the following technical report.
@@ -73,19 +73,20 @@ Constructor:
 
 Functions
 
-| Method            | Parameters                                | Returns | Description                                                                            |
-| ----------------- | ----------------------------------------- | ------- | -------------------------------------------------------------------------------------- |
-| fit               | corpus: str                               | None    | Fit the model on the given corpus.                                                     |
-| encode            | corpus: str                               | list    | Encode the given corpus.                                                               |
-| calculate_metrics | corpus: str, tokens: [str], verbose: bool | tuple   | Calculate ATL and TPW for the given corpus.                                            |
-| save              | filepath: str                             | None    | Save model countings, vocab size, and stoi/itos dictionaries in JSON.                  |
-| load              | filepath: str                             | None    | Load model countings, vocab size, and stoi/itos dictionaries from JSON for efficiency. |
+| Method            | Parameters                               | Returns | Description                                                                            |
+|-------------------|------------------------------------------|---------|----------------------------------------------------------------------------------------|
+| fit               | corpus: str                              | None    | Fit the model on the given corpus.                                                     |
+| encode            | corpus: str                              | list    | Encode the given corpus.                                                               |
+| decode            | token: list                              | str     | Decode a sequence generation back to natural language.                                 |
+| calculate_metrics | corpus: str, tokens: list, verbose: bool | tuple   | Calculate ATL and TPW for the given corpus.                                            |
+| save              | filepath: str                            | None    | Save model countings, vocab size, and stoi/itos dictionaries in JSON.                  |
+| load              | filepath: str                            | None    | Load model countings, vocab size, and stoi/itos dictionaries from JSON for efficiency. |
 
 ###### Util Functions
 For granularity why sources some of the used functionality out to static methods. By this we wanted to keep the code clean and maintainable:
 
 *normalization.py* <br>
-This function prepares to corpus before it gets tokenized to character level. The passed text is first converted to only lower cases, then all line breaks gets removed and last all spaces are replaced with _ which then are used as a end of word token so to say. The reason why we removed the line breaks was because the later models should focus on learning next words and generate text and not on text formation or where to use line breaks and so on.
+This function normalizes text by converting it to lowercase, removing line breaks, replacing consecutive spaces with underscores, and filtering out characters from Chinese, Japanese, Korean, Arabic, and Hebrew scripts.
 
 *char_tokenization.py:* <br>
 This function get a corpus and returns a list of all characters separated as a item of that list. This function is used by the Encoder firstly to create a basis of defining the initial vocabulary as well as preparing the text to be encoded for the encoding algorithm.
@@ -97,12 +98,12 @@ This function scans the tokenized corpus and identifies the most frequent adjace
 This function takes the most frequent token pair and merges all its occurrences in the corpus into a single token. This step updates the tokenized representation of the corpus and is repeated iteratively to grow the vocabulary according to the Byte Pair Encoding process.
 
 
-| Method                       | Parameters                             | Returns | Description                                                                                                                                  |
-| ---------------------------- | -------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| text_normalization           | corpus: str                            | str     | Normalizes text by converting it to lowercase, removing newline characters, and replacing multiple spaces with a single underscore (`_`).    |
-| char_tokenization            | corpus: str                            | list    | Tokenizes text into a list of individual characters.                                                                                         |
-| get_most_frequent_token_pair | corpus: list of str                    | tuple   | Identifies and returns the most frequent adjacent token pair in the tokenized corpus.                                                        |
-| merge_token_pair_in_corpus   | corpus: list of str, token_pair: tuple | list    | Merges all occurrences of the specified token pair into a single token within the tokenized corpus and returns the updated tokenized corpus. |
+| Method                       | Parameters                             | Returns | Description                                                                                                                                                                                                              |
+| ---------------------------- | -------------------------------------- | ------- |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| text_normalization           | corpus: str                            | str     | Normalizes text by converting all characters to lowercase, removing line breaks, replacing consecutive spaces with underscores, and filtering out characters from Chinese, Japanese, Korean, Arabic, and Hebrew scripts. |
+| char_tokenization            | corpus: str                            | list    | Tokenizes text into a list of individual characters.                                                                                                                                                                     |
+| get_most_frequent_token_pair | corpus: list of str                    | tuple   | Identifies and returns the most frequent adjacent token pair in the tokenized corpus.                                                                                                                                    |
+| merge_token_pair_in_corpus   | corpus: list of str, token_pair: tuple | list    | Merges all occurrences of the specified token pair into a single token within the tokenized corpus and returns the updated tokenized corpus.                                                                             |
 
 ###### bpe/main.py
 In the bpe/main.py file, we investigated two aspects related to the **generalization capability** of BPE using the **Tokens per Word (TPW)** metric.
@@ -116,12 +117,9 @@ We used a **greedy-like approach** (maybe Pseudocode??):
 - Compute **TPW** for both training and test datasets for comparison.
 
 The **scoring function** was designed to combine both tokenization efficiency and generalization:
-  
-$$
-\text{score} = \text{test_tpw} *\frac{\text{test_tpw}}{\text{train_tpw}}
-$$
+`score = test_tpw * (test_tpw / train_tpw)`
 
-We expected this score to remain high because Shakespeare’s works share a relatively consistent vocabulary and style.
+We expected k to be very high with respect to the data size because Shakespeare’s works share a relatively consistent vocabulary and style.
 
 - The tokens learned on the training data should apply well to the test data.
 - Only at very high k values (where BPE effectively memorizes entire words) should generalization begin to decline, as it starts creating tokens specific to words seen only in training.
@@ -200,15 +198,15 @@ The NGramModel class builds and uses an n-gram language model that learns word s
 
 **Functions**
 
-| Method               | Parameters                                    | Returns | Description                                                                                        |
-| -------------------- | --------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------- |
-| fit                  | training_data: list                           | None    | Fit the n-gram model to a sequence of training tokens.                                             |
-| probability          | context: tuple, word: str, alpha: float = 0.4 | float   | Compute the interpolated probability of a word given its context using backoff for unseen n-grams. |
-| calculate_perplexity | test_data: list                               | float   | Calculate perplexity of the model on test data.                                                    |
-| predict_next_word    | context: list or tuple                        | str     | Predict the most likely next word for a given context.                                             |
-| generate_sequence    | length: int = 20, seed: tuple = None          | list    | Generate a sequence of words using the trained model.                                              |
-| save                 | filepath: str = None                          | None    | Save the trained n-gram model to disk in a JSON-safe format.                                       |
-| load                 | filepath: str = None                          | None    | Load a previously saved n-gram model from disk.                                                    |
+| Method               | Parameters                                    | Returns | Description                                                                                           |
+| -------------------- |-----------------------------------------------| ------- |-------------------------------------------------------------------------------------------------------|
+| fit                  | training_data: list                           | None    | Fit the n-gram model to a sequence of training tokens.                                                |
+| probability          | context: tuple, word: str, alpha: float = 0.4 | float   | Compute the interpolated probability of a word given its context using interpolation and backoff.     |
+| calculate_perplexity | test_data: list                               | float   | Calculate perplexity of the model on test data.                                                       |
+| predict_next_word    | context: list or tuple, sample: bool = False  | str     | Predict the next word for a given context, optionally sampling from the probability distribution.     |
+| generate_sequence    | seed: tuple = None, sample: bool = False      | list    | Generate a sequence of words starting from a seed until punctuation or max length is reached.         |
+| save                 | filepath: str = None                          | None    | Save the trained n-gram model to disk in a JSON-safe format.                                          |
+| load                 | filepath: str = None                          | None    | Load a previously saved n-gram model from disk.                                                       |
 
 
 **Implementation of Laplace-Smoothing, Backoff and Interpolation**
@@ -216,35 +214,33 @@ The NGramModel class builds and uses an n-gram language model that learns word s
 Since Laplace smoothing, backoff, and interpolation are central concepts in classical n-gram models, we include the relevant code here and provide an explanation of how each concept is implemented.
 
 ```python
-    def probability(self, context, word, alpha=0.4):
-        # Determine which n-gram orders have non-zero interpolation weights
+        def probability(self, context, word, alpha=0.4):
+        # Identify active n-gram orders based on non-zero lambdas
         active_orders = [i + 1 for i, w in enumerate(self.lambdas) if w > 0]
         if not active_orders:
             return 0.0
 
         prob = 0.0
         for order in sorted(active_orders, reverse=True):
-            # Retrieve the interpolation weight for the current n-gram order
+            # get the weight for this order
             lambda_weight = self.lambdas[order - 1]
-            if lambda_weight == 0:  # Skip this order if its interpolation weight is zero (safety check)
+            if lambda_weight == 0: # if no lambda skip this one
                 continue
 
             if order == 1:
-                # Apply Laplace smoothing for unigram probability
-                prob_order = (self.unigram[word] + 1) / (sum(self.unigram.values()) + self.vocab_size)
+                prob_order = (self.unigram[word] + 1) / (sum(self.unigram.values()) + self.vocab_size) # laplace smoothing on unigram
             else:
-                # Extract the relevant context window for the current n-gram order
-                context_slice = tuple(context[-(order - 1):])
+                context_slice = tuple(context[-(order - 1):]) # get the context we are focusing at (trigram, bigram etc.)
                 count_context = self.context_counts[order].get(context_slice, 0)
                 count_word = self.ngrams[order][context_slice].get(word, 0)
                 if count_word > 0:
                     prob_order = count_word / count_context
                 else:
-                    # Back off to smoothed unigram probability scaled by alpha
+                    # Back off to unigram probability with laplace smoothing
                     prob_order = alpha * (self.unigram[word] + 1) / (sum(self.unigram.values()) + self.vocab_size)
             prob += lambda_weight * prob_order
 
-        # Normalize final probability to ensure weights sum correctly
+        # Normalize by sum of lambdas to avoid scaling issues
         return prob / sum(self.lambdas)
 ```
 1. *Laplace Smoothing* <br>
@@ -279,7 +275,7 @@ Perplexity is calculated by iterating through the test data and summing the log 
 total_log_prob += math.log(p)
 ```
 where `p` is the predicted probability for the current word.  
-The final perplexity is computed as:  
+The final perplexity is computed as: `Perplexity = exp( -1/N * Σ log P(wᵢ | context) )`
 $$
 \text{Perplexity} = \exp\left(-\frac{1}{N} \sum_{i=1}^N \log P(w_i|\text{context}) \right)
 $$
@@ -289,21 +285,19 @@ where \(N\) is the number of words. A lower perplexity value indicates better pr
 
 ###### Util Functions
 *preprocessing.py - prepare_data* <br>
-The prepare_data function initializes the Byte Pair Encoder from above and attempts to load a pre-trained model; if none is found, it trains a new one using the training data and saves it. It then uses this tokenizer to encode the training, validation, and test datasets into tokenized sequences. Finally, it returns the size of the learned BPE vocabulary (merge operations) and the encoded token sequences for each dataset.
+The `prepare_data` function initializes a Byte Pair Encoder using the provided `datatype` and `vocab_size`, attempts to load a pre-trained model, and trains a new one if none is found. It then encodes the training, validation, and test datasets into tokenized sequences. Finally, it returns the BPE encoder itself, the number of learned merge operations, and the encoded datasets.
 
-| Method        | Parameters                                                      | Returns                                               | Description                                                                                                           |
-|---------------|-----------------------------------------------------------------|-------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|
-| prepare_data  | training_data: list, valid_data: list, test_data: list, vocab_size: int = 1000 | tuple (int, list, list, list)                        | Initializes or loads a Byte Pair Encoder model, encodes training, validation, and test datasets, and returns the vocabulary size along with the encoded token sequences for each dataset. |
+| Method        | Parameters                                                                                                                          | Returns                                        | Description                                                                                                                                                              |
+|---------------|-------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| prepare_data  | training_data: list, valid_data: list, test_data: list, vocab_size: int = 1000, datatype: str = 'shakespeare', neural: bool = False | tuple (BytePairEncoder, int, list, list, list) | Loads or trains a Byte Pair Encoder model, encodes training, validation, and test datasets, and returns the encoder object, number of merges, and tokenized sequences.   |
 <br>
 
 ###### classical_ngram/main.py
-In the main.py inside the classical_ngram folder we concetrated on three different things.
-First we evaluated how the perplexity would change on different ngram sizes and different number of merges for the
-byte pair tokenizer.
-Because while this evaluation the interpolation weights were equal for all ngram sizes if the ngram was bigger a unigram
-we secondly investigated the optimal interpolation weights for different ngram sizes bigger than 1 with a fixed `k=1000`.
-Lastly we than used one of these interpolation optimised models to generate sequence based on a given context input, that fits
-to the ngram size.
+In the classical_ngram/main.py script, we focused on three main tasks. First, we evaluated how perplexity changes for 
+different n‑gram sizes and varying numbers of Byte Pair Encoding (BPE) merges. Second, using a fixed BPE merge size (k = 1000),
+we optimized interpolation weights for n‑gram sizes greater than one to achieve the best balance between different context lengths. 
+Finally, we used one of the interpolation‑optimized models to generate text sequences based on a given context, ensuring 
+that the generation respects the chosen n‑gram size.
 
 1. **Perplexity Evaluation of different BPE merges for different N-gram sizes:** <br>
    You can see the results of the evaluation in the figure below.
@@ -318,7 +312,52 @@ to the ngram size.
 
 
 2. **Interpolation weights optimization** <br>
+   We optimized interpolation weights for different n‑gram sizes using a greedy search with patience.
+   Weights were initialized equally, then iteratively adjusted one at a time (in small positive or negative steps),
+   always re-normalizing them. A new model was trained after each adjustment, and changes were accepted only if they
+   reduced validation perplexity. The process stopped when no improvement was seen for several iterations or after
+   reaching a maximum iteration limit. This was repeated for n‑gram sizes 2–12.
+
+   | N-gram Order | λ₁    | λ₂    | λ₃    | λ₄    | λ₅    | λ₆    | λ₇    | λ₈    | λ₉    | λ₁₀   | Best Perplexity |
+   |--------------|-------|-------|-------|-------|-------|-------|-------|-------|-------|--------|-----------------|
+   | 2-gram       | 0.000 | 1.000 |       |       |       |       |       |       |       |        | 79.063 |
+   | 3-gram       | 0.005 | 0.488 | 0.507 |       |       |       |       |       |       |        | 48.483 |
+   | 4-gram       | 0.018 | 0.516 | 0.290 | 0.176 |       |       |       |       |       |        | 44.563 |
+   | 5-gram       | 0.011 | 0.519 | 0.285 | 0.087 | 0.098 |       |       |       |       |        | 43.847 |
+   | 6-gram       | 0.032 | 0.471 | 0.329 | 0.096 | 0.033 | 0.039 |       |       |       |        | 44.300 |
+   | 7-gram       | 0.023 | 0.472 | 0.330 | 0.087 | 0.024 | 0.029 | 0.034 |       |       |        | 44.015 |
+   | 8-gram       | 0.018 | 0.482 | 0.302 | 0.080 | 0.020 | 0.027 | 0.033 | 0.039 |       |        | 43.866 |
+   | 9-gram       | 0.009 | 0.480 | 0.317 | 0.070 | 0.011 | 0.018 | 0.026 | 0.032 | 0.038 |        | 43.711 |
+   | 10-gram      | 0.000 | 0.499 | 0.315 | 0.027 | 0.027 | 0.027 | 0.027 | 0.027 | 0.027 | 0.027  | 43.680 |
+
+   This outcome shows a clear pattern: for all n-gram sizes above 2, the second- and third-order weights (λ₂ and λ₃) dominate, while
+   higher-order weights remain relatively small. A likely explanation is that bigram and trigram models capture most of
+   the useful local word dependencies present in the training data, while longer context windows (4-grams and above) 
+   suffer from data sparsity. In other words, bigrams and trigrams strike the best balance between context information
+   and reliable probability estimates, whereas higher-order n-grams often appear too infrequently to improve predictions
+   consistently.
+
+   **Disclaimer**: The interpolation weight optimization used here relies on a greedy search with patience. While this
+   approach is computationally efficient and often yields good results, it does not guarantee finding the global optimum
+   for interpolation weights every time. Results may vary slightly depending on initialization and the patience parameters.
    
+
+3. **Sequence Generation** <br>
+   For sequence generation, we implemented a simple function that uses the trained N-gram model to generate text starting
+   from a provided seed context. The generation process can run in two modes: deterministic (always picking the most likely
+   next token) or stochastic (sampling from the probability distribution). For our experiments, we chose a trigram model 
+   (`n=3`) and applied the previously optimized interpolation weights `[0.0, 0.488, 0.507]`. This choice balanced bigram 
+   and trigram contexts while avoiding unnecessary reliance on unigrams, which was shown to improve validation perplexity.
+
+   Using deterministic generation with our seed context, we obtained the sentence:  
+   `"shall i have a suit is a very good meeting to the moor: i am not to be a man."`  
+   When enabling sampling, one run produced a more diverse and creative output:  
+   `"shall i would give you not, that how you kiand ood him the receive that thou art weddingd, art no."`  
+   
+   The deterministic approach consistently yields coherent and structured sequences, while sampling introduces diversity 
+   and creative phrasing at the cost of occasional grammatical inconsistencies. This aligns with our earlier perplexity and 
+   interpolation weight optimization results, confirming that the model generalizes well but also retains enough flexibility 
+   for creative text generation when sampling is enabled.
 
 
 ### Neural N-Gram

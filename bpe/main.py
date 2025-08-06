@@ -57,6 +57,7 @@ def main():
 
     # Don't forget to give in the data you want to test for
     best_k = k_optimization_generalisation(training_data, modern_test_data, step_size=100, max_no_improve=3)
+    # best_k = k_optimization_generalisation(training_data, test_data, step_size=2000, max_no_improve=3)
     print(f"Optimal k found: {best_k}")
 
 

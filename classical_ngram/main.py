@@ -16,7 +16,7 @@ def sequence_generation(context: list, train_tokens: list) -> list:
 
     Args:
         context (list): A list of tokens (words/subwords/characters) to start generation from.
-        train_tokens (list): A list of tokens (words/subwords/characters) to fit the ngram.
+        train_tokens (list): A list of tokens (words/subwords/characters) to fit the neural_ngram.
 
     Returns:
         str: Generated sequence as a string.
@@ -114,46 +114,49 @@ def main():
 
     # Fixed BPE vocab_size
     vocab_size = 1000
-    bpe_encoder, _, train_tokens, valid_tokens, _ = prepare_data(training_data, valid_data, test_data, vocab_size=vocab_size,
-                                                    neural=False)
+    bpe_encoder, _, train_tokens, valid_tokens, test_tokens = prepare_data(
+        training_data, valid_data, test_data, vocab_size=vocab_size, neural=False
+    )
 
-    # Provide an initial context (adjust this as needed for testing)
-    initial_context = ["shall_", "i_"]
-    generated_sequence = bpe_encoder.decode(sequence_generation(initial_context, train_tokens))
+    print("Choose an experiment to run:")
+    print("1: Sequence Generation")
+    print("2: Optimize Interpolation Weights")
+    print("3: Perplexity Comparison")
+    choice = input("Enter 1, 2, or 3: ").strip()
 
-    print("Initial context:", " ".join(initial_context))
-    print("Generated sequence:", generated_sequence)
+    if choice == "1":
+        initial_context = ["shall_", "i_"]
+        generated_sequence = bpe_encoder.decode(
+            sequence_generation(initial_context, train_tokens)
+        )
+        print("Initial context:", " ".join(initial_context))
+        print("Generated sequence:", generated_sequence)
 
+    elif choice == "2":
+        sizes = np.arange(2, 11)
+        for size in sizes:
+            lambdas, best_perplexity = optimize_interpolation_weights(
+                train_tokens, valid_tokens, n=size, step=0.1, patience=5
+            )
+            print(f"Optimal {size}-gram lambdas: {lambdas}, best perplexity: {best_perplexity:.4f}")
 
-    '''
-    # Load the modern english wikitext data
-    wiki_dataset = load_dataset('wikitext', 'wikitext-2-raw-v1')
-    modern_training_data = ' '.join(wiki_dataset['train']['text'])[:len(training_data)*5]
-    modern_valid_data = ' '.join(wiki_dataset['validation']['text'])[:len(valid_data)*5]
-    modern_test_data = ' '.join(wiki_dataset['test']['text'])[:len(test_data)*5]
-    
-    # Optimize interpolation for different sized n-grams
-    sizes = np.arange(2,11)
-    for size in sizes:
-        lambdas, best_perplexity = optimize_interpolation_weights(train_tokens, valid_tokens, n=size, step=0.1, patience=5)
-        print(f"Optimal {size}-gram lambdas: {lambdas}, best perplexity: {best_perplexity:.4f}")
-    
-    
-    # Perplexity Comparison
-    perplexity = perplexity_comparison(training_data, valid_data, test_data)
-    print(perplexity)
+    elif choice == "3":
+        perplexity = perplexity_comparison(training_data, valid_data, test_data)
+        print("Perplexity comparison results:", perplexity)
 
-    for size, values in perplexity.items():
-        ks = list(range(0, 2200, 200))
-        plt.plot(ks[:len(values)], values, label=f'N={size}')
+        for size, values in perplexity.items():
+            ks = list(range(0, 2200, 200))
+            plt.plot(ks[:len(values)], values, label=f'N={size}')
 
-    plt.xlabel('BPE merges (k)')
-    plt.ylabel('Perplexity')
-    plt.title('Perplexity vs BPE merges for different N-gram sizes')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-    '''
+        plt.xlabel('BPE merges (k)')
+        plt.ylabel('Perplexity')
+        plt.title('Perplexity vs BPE merges for different N-gram sizes')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+    else:
+        print("Invalid choice. Please run again and enter 1, 2, or 3.")
 
 
 

@@ -1,5 +1,5 @@
 from utils.load_data import load_data
-from ngram.neural_ngram import NeuralNGram
+from neural_ngram.neural_ngram import NeuralNGram
 from classical_ngram.utils.preprocessing import prepare_data
 
 

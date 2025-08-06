@@ -180,7 +180,7 @@ class NeuralNGram:
         :return: the perplexity value
         """
 
-        # Load Data and calculate num_samples based on data length and ngram size
+        # Load Data and calculate num_samples based on data length and neural_ngram size
         data = np.array(data, dtype=np.int64)
         num_samples = len(data) - self.ngram_size + 1
 
