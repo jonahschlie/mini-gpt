@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 class NeuralNGram:
 
@@ -80,7 +81,7 @@ class NeuralNGram:
         self.linear_W2 -= self.lr * dW2
         self.linear_b2 -= self.lr * db2
 
-    def fit(self, train_data, valid_data, patience=5, epochs=10, batch_size=32, lr_decay=1.0):
+    def fit(self, train_data, valid_data, patience=5, epochs=10, batch_size=32, lr_decay=1.0) -> tuple:
         """
         Epoch-based training with shuffling
         """
@@ -111,6 +112,8 @@ class NeuralNGram:
         val_contexts = np.stack([val_data[i:i + self.ngram_size - 1] for i in range(val_num_samples)])
         val_targets = np.array([val_data[i + self.ngram_size - 1] for i in range(val_num_samples)])
 
+        train_losses = []
+        val_losses = []
         for epoch in range(epochs):
             # Shuffle data each epoch
             perm = np.random.permutation(train_num_samples)
@@ -133,6 +136,7 @@ class NeuralNGram:
 
 
             epoch_loss /= train_num_samples
+            train_losses.append(epoch_loss)
 
             num_val_batches = int(np.ceil(val_num_samples / batch_size))
             val_loss = 0.0
@@ -142,6 +146,8 @@ class NeuralNGram:
                 loss, _ = self.forward(val_contexts[start:end], val_targets[start:end], target=True)
                 val_loss += loss * (end - start)
             val_loss /= val_num_samples
+            val_losses.append(val_loss)
+
             if val_loss < best_val_loss:
                 best_val_loss = val_loss
                 best_embeddings = self.embedding_matrix.copy()
@@ -170,6 +176,8 @@ class NeuralNGram:
             if stop_training:
                 break
 
+        return train_losses, val_losses
+
     def perplexity(self, data, batch_size=1) -> float:
         """
         Calculate the perplexity for that model after training on validation data
@@ -194,6 +202,55 @@ class NeuralNGram:
 
         avg_nll = nll / num_samples
         return float(np.exp(avg_nll))
+
+    def generate_sequence(self, seed, idx_to_token, length=20000, sample=False):
+        """
+        Generate a sequence of tokens using the trained neural model.
+
+        Args:
+            seed (list[int]): A list of token indices of length n-1 as the initial context.
+            length (int): Max sequence length to generate (default 20000).
+            sample (bool): If True, sample next token based on probability distribution;
+                           otherwise, choose the most probable token (argmax).
+            idx_to_token (callable or dict, optional): A mapping from token index to string
+                           for punctuation checking. If None, raw indices are used.
+
+        Returns:
+            list[int]: Generated token sequence including the initial seed.
+        """
+        if len(seed) != self.ngram_size - 1:
+            raise ValueError(f"Seed must have length {self.ngram_size - 1}")
+
+        context = seed.copy()
+        output = seed.copy()
+
+        for _ in range(length):
+            # Get probability distribution for next token
+            probs = self.forward(np.array([context]), target=False)[0]
+
+            # Choose next token
+            if sample:
+                next_token = random.choices(range(self.vocab_size), weights=probs, k=1)[0]
+            else:
+                next_token = int(np.argmax(probs))
+
+            output.append(next_token)
+
+            # Slide context window
+            context = output[-(self.ngram_size - 1):]
+
+            # --- Break Conditions ---
+            # Check punctuation token if mapping provided
+            if idx_to_token:
+                next_word = idx_to_token[next_token] if callable(idx_to_token) else idx_to_token.get(next_token, "")
+                if any(punct in next_word for punct in [".", "?", "!"]):
+                    break
+            # Stop if max length reached
+            if len(output) > length:
+                print(len(output))
+                break
+
+        return output
 
 
 

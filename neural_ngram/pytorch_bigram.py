@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+import random
 
 class NeuralNGramTorch(nn.Module):
     def __init__(self, vocab_size, ngram_size=3, embedding_dim=64, hidden_dim=128, lr=1e-2, device=None):
@@ -65,6 +66,10 @@ class NeuralNGramTorch(nn.Module):
         wait = 0
         best_state = None
 
+        # Track training history
+        train_losses = []
+        val_losses = []
+
         for epoch in range(epochs):
             # Shuffle training data
             indices = np.random.permutation(train_num_samples)
@@ -90,11 +95,13 @@ class NeuralNGramTorch(nn.Module):
                 epoch_loss += loss.item() * (end - start)
 
             epoch_loss /= train_num_samples
+            train_losses.append(epoch_loss)
 
             # ---- Validation on full set ----
             with torch.no_grad():
                 _, val_loss = self.forward(val_contexts, val_targets)
             val_loss = val_loss.item()
+            val_losses.append(val_loss)
 
             print(f"Epoch {epoch+1}/{epochs} - loss: {epoch_loss:.4f} - val_loss: {val_loss:.4f}")
 
@@ -114,6 +121,8 @@ class NeuralNGramTorch(nn.Module):
             for g in self.optimizer.param_groups:
                 g["lr"] *= lr_decay
 
+        return train_losses, val_losses
+
     def perplexity(self, data):
         data = np.array(data, dtype=np.int64)
         num_samples = len(data) - self.ngram_size + 1
@@ -129,3 +138,53 @@ class NeuralNGramTorch(nn.Module):
             nll = -log_probs[torch.arange(num_samples), targets].mean().item()
 
         return np.exp(nll)
+
+    def generate_sequence(self, seed, idx_to_token, length=20000, sample=False):
+        """
+        Generate a sequence of tokens using the trained PyTorch neural n-gram model.
+
+        Args:
+            seed (list[int]): A list of token indices of length n-1 as the initial context.
+            idx_to_token (dict or callable): Mapping from index to token string for decoding.
+            length (int): Maximum sequence length to generate.
+            sample (bool): If True, sample next token based on probability distribution.
+                           Otherwise, choose the most probable token (argmax).
+
+        Returns:
+            list[int]: Generated token sequence including the initial seed.
+        """
+        if len(seed) != self.ngram_size - 1:
+            raise ValueError(f"Seed must have length {self.ngram_size - 1}")
+
+        # Ensure model is in evaluation mode
+        self.eval()
+
+        context = seed.copy()
+        output = seed.copy()
+
+        for _ in range(length):
+            x = torch.tensor([context], dtype=torch.long, device=self.device)
+
+            with torch.no_grad():
+                logits, _ = self.forward(x)
+                probs = F.softmax(logits, dim=-1)[0].cpu().numpy()
+
+            # Choose next token
+            if sample:
+                next_token = random.choices(range(self.vocab_size), weights=probs, k=1)[0]
+            else:
+                next_token = int(np.argmax(probs))
+
+            output.append(next_token)
+            context = output[-(self.ngram_size - 1):]
+
+            # --- Break conditions ---
+            if idx_to_token:
+                next_word = idx_to_token[next_token] if callable(idx_to_token) else idx_to_token.get(next_token, "")
+                if any(punct in next_word for punct in [".", "?", "!"]):
+                    break
+
+            if len(output) >= length:
+                break
+
+        return output

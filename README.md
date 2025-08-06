@@ -361,4 +361,62 @@ that the generation respects the chosen n‑gram size.
 
 
 ### Neural N-Gram
+###### Neural NGRAM Numpy Class Implementation
+###### neural_ngram/main.py
+In the main.py we did two things. First we trained both of the model (pytorch und numpy) and calculated their perplexity. 
+Second we then generated a sequence with both of the models and compared them.
+
+1. **Numpy Neural Ngram** <br>
+   For the training of the Numpy Neural Ngram we used a BPE with `k=1000` and `n=3` so we can compare the perplexities of this and the
+   classical ngram. Here you can see the model configurations:
+   - Embedding Dimension: 64 
+   - N-Gram Size: 3 
+   - Hidden Layer Size: 128 
+   - Learning Rate: 0.5 (decayed by 0.95 each epoch)
+   - Batch Size: 32 
+   - Patience (Early Stopping): 5 epochs 
+   - Max Epochs: 50
+   
+   ![Neural Ngram training plot](utils/figures/losses_neural_ngram.png)
+   
+   The model achieved a final **training loss of ~3.57**, a **validation loss of ~4.28**, and a test **perplexity of ~74.90**. 
+   Early stopping was triggered at **epoch 28** due to a plateau in validation loss. During training, the model exhibited 
+   rapid loss reduction in the initial epochs, indicating effective early learning. After around epoch 20, the validation 
+   loss plateaued, showing that the model had reached its generalization capacity. The use of early stopping prevented 
+   overfitting and ensured that the best-performing weights were preserved. <br>
+   <br>
+   Using the trained NumPy-based neural n-gram model, we generated text with two different decoding strategies: <br>
+	- Deterministic (sample = False): `shall i do beseech you, sir, the king's a virtue of cawdor` <br>
+    - Stochastic (sample = True): `shall i rather could awake, with you from sence'd by the hill from your hi` <br><br>
+   The deterministic decoding shows that the model learned basic structure and context relationships from the training data, 
+   producing text that resembles Shakespearean phrasing. The stochastic sampling demonstrates the model’s learned probability distribution, generating more varied but less stable output. 
+   This difference highlights the trade-off between predictability and creativity when generating text from probabilistic language models. <br> <br>
+   
+
+2. **PyTorch Neural Ngram** <br>
+   The model configurations were exactly the same as used in the numpy neural ngram model.
+   
+   ![Neural PyTorch Ngram training plot](utils/figures/loss_pytorch_neural_ngram.png)
+
+   The model achieved a final **training loss of ~3.54**, a **validation loss of ~4.40**, and a **test perplexity of ~85.31**. 
+   Early stopping was triggered at **epoch 48** after the validation loss plateaued, indicating no further generalization improvement.
+
+   During training, the model showed steady and consistent loss reduction throughout most of the epochs, demonstrating effective learning.
+   The validation loss decreased gradually but started to plateau after around epoch 35, signaling the model had reached its capacity to 
+   generalize on unseen data. The use of early stopping prevented overfitting and ensured that the best-performing weights were
+   preserved. The slightly higher final perplexity compared to the NumPy-based implementation is likely due to differences in how
+   PyTorch handles certain operations under the hood, such as weight initialization, numerical precision, and optimizer behavior,
+   which can subtly influence training dynamics even when using the same hyperparameters. <br>
+   <br>
+   Using the trained PyTorch-based neural n-gram model, we generated text with two different decoding strategies: <br>
+	- Deterministic (sample = False): `shall i do not say 'amen, and all the world is the very like, and` <br>
+    - Stochastic (sample = True): `shall i bear, and has had been banque there must be man's casca, anto` <br><br>
+   
+   The deterministic decoding shows that the model learned basic syntactic structure and Shakespearean-style phrasing but produced an incomplete sequence lacking semantic closure, indicating that long-range coherence remains challenging. The stochastic decoding demonstrates the model’s learned probability distribution, generating more diverse but less stable output with some grammatical inconsistencies. Compared to the NumPy neural n‑gram model—which produced slightly more coherent deterministic output (shall i do beseech you, sir, the king's a virtue of cawdor) and similarly creative but unstable stochastic output—the PyTorch model shows slightly lower semantic stability. This difference aligns with the slightly higher perplexity observed in the PyTorch implementation (85.31 vs. 74.90) and is likely influenced by subtle differences in weight initialization, numerical precision, and optimizer behavior in PyTorch, even under identical hyperparameters.
+
+   
+
+
+
+
 ### GPT
