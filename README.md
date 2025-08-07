@@ -362,6 +362,53 @@ that the generation respects the chosen n‑gram size.
 
 ### Neural N-Gram
 ###### Neural NGRAM Numpy Class Implementation
+The `NeuralNGram` class implements a feedforward neural n-gram language model using NumPy. It learns to predict the next token in a sequence given a context of `n-1` previous tokens. The model includes an embedding layer, a hidden layer with nonlinearity, and an output layer with softmax.
+
+**Constructor**
+
+| Attribute           | Type   | Description                                                         |
+|---------------------|--------|---------------------------------------------------------------------|
+| embedding_dimension | int    | Size of the token embedding vectors.                                |
+| vocab_size          | int    | Size of the vocabulary.                                             |
+| ngram_size          | int    | Size of the n-gram window (e.g., 3 for trigram).                    |
+| lr                  | float  | Learning rate for gradient descent.                                 |
+| hidden_layer_size   | int    | Size of the hidden layer in the neural network.                     |
+
+**Functions**
+
+| Method             | Parameters                                                                                                           | Returns                           | Description                                                                                    |
+|--------------------|----------------------------------------------------------------------------------------------------------------------|-----------------------------------|------------------------------------------------------------------------------------------------|
+| forward            | x: np.ndarray, y: np.ndarray = None, target: bool = True                                                             | tuple or np.ndarray               | Performs a forward pass. If target=True, returns loss and logits; else returns probabilities. |
+| backwards          | x: np.ndarray, y: np.ndarray                                                                                         | None                              | Performs a backward pass (gradient computation and parameter update).                         |
+| fit                | train_data: list, valid_data: list, patience: int = 5, epochs: int = 10, batch_size: int = 32, lr_decay: float = 1.0 | tuple (train_losses, val_losses)  | Trains the model using mini-batch SGD with optional early stopping and learning rate decay.   |
+| perplexity         | data: list, batch_size: int = 1                                                                                      | float                             | Computes perplexity of the trained model over a dataset.                                       |
+| generate_sequence  | seed: list[int], idx_to_token: dict or callable, length: int = 20000, sample: bool = False                           | list[int]                         | Generates a token sequence given a seed context. Terminates on punctuation or max length.     |
+
+
+###### Neural NGRAM Pytorch Class Implementation
+The `NeuralNGramTorch` class implements a feedforward neural n-gram language model using PyTorch. It predicts the next token in a sequence using `n-1` preceding tokens. The model uses an embedding layer, a hidden layer with tanh activation, and a final softmax layer for prediction.
+
+**Constructor**
+
+| Attribute | Type   | Description                                                                 |
+|--------|--------|-----------------------------------------------------------------------------|
+| vocab_size | int    | Total number of tokens in the vocabulary.                                  |
+| ngram_size | int    | Size of the n-gram window (e.g., 3 for trigram).                           |
+| embedding_dim | int    | Dimensionality of the embedding vectors.                                   |
+| hidden_dim | int    | Size of the hidden layer.                                                  |
+| lr     | float  | Learning rate for optimization.                                            |
+| device | str    | Device to run the model on (e.g., "cpu" or "cuda").                        |
+
+**Functions**
+
+| Method            | Parameters                                                                                                            | Returns                          | Description                                                                                      |
+|-------------------|-----------------------------------------------------------------------------------------------------------------------|----------------------------------|--------------------------------------------------------------------------------------------------|
+| forward           | x: torch.Tensor, targets: torch.Tensor = None                                                                         | logits, loss                     | Performs a forward pass. Returns logits and optional cross-entropy loss.                        |
+| fit               | train_data: list, valid_data: list, epochs: int = 10, batch_size: int = 32, patience: int = 5, lr_decay: float = 0.95 | tuple (train_losses, val_losses) | Trains the model with early stopping and learning rate decay.                                   |
+| perplexity        | data: list                                                                                                            | float                            | Computes perplexity of the model on the given dataset.                                           |
+| generate_sequence | seed: list[int], idx_to_token: dict or callable, length: int = 20000, sample: bool = False                            | list[int]                        | Generates a sequence of tokens from a given seed. Stops at punctuation or max length.           |
+
+
 ###### neural_ngram/main.py
 In the main.py we did two things. First we trained both of the model (pytorch und numpy) and calculated their perplexity. 
 Second we then generated a sequence with both of the models and compared them.

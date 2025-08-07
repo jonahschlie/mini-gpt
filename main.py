@@ -1,7 +1,7 @@
 from utils.load_data import load_data
 from neural_ngram.neural_ngram import NeuralNGram
 from classical_ngram.utils.preprocessing import prepare_data
-from neural_ngram.pytorch_bigram import NeuralNGramTorch
+from neural_ngram.pytorch_neural_ngram import NeuralNGramTorch
 
 
 def main():
