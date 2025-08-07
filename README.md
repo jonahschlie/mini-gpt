@@ -1,6 +1,6 @@
 ## What is this repository about?
 
-This repository constitutes the final assigment for the course "Buildung GPT from scratch" taught by Prof. Elia Bruni and was submitted by Jonah Schlie, William Sholer, Zeynep Kocak and xxxx. 
+This repository constitutes the final assigment for the course "Buildung GPT from scratch" taught by Prof. Elia Bruni and was submitted by Jonah Schlie, William Shelor, Zeynep Koçak and Yash Saraswat. 
 
 During the course we investigated step by step how GPTs are build inclusive preprocessing, preceding language models before the modern Transformer Achitecture came up, and finally the transformer based mini GPT. The course and therefore the repo as well are structured in 4 milestones which were implemented by us. 
 1. Byte Pair Encoder
@@ -460,10 +460,6 @@ Second we then generated a sequence with both of the models and compared them.
     - Stochastic (sample = True): `shall i bear, and has had been banque there must be man's casca, anto` <br><br>
    
    The deterministic decoding shows that the model learned basic syntactic structure and Shakespearean-style phrasing but produced an incomplete sequence lacking semantic closure, indicating that long-range coherence remains challenging. The stochastic decoding demonstrates the model’s learned probability distribution, generating more diverse but less stable output with some grammatical inconsistencies. Compared to the NumPy neural n‑gram model—which produced slightly more coherent deterministic output (shall i do beseech you, sir, the king's a virtue of cawdor) and similarly creative but unstable stochastic output—the PyTorch model shows slightly lower semantic stability. This difference aligns with the slightly higher perplexity observed in the PyTorch implementation (85.31 vs. 74.90) and is likely influenced by subtle differences in weight initialization, numerical precision, and optimizer behavior in PyTorch, even under identical hyperparameters.
-
-   
-
-
 
 
 ### GPT
