@@ -3,12 +3,18 @@ from torch import nn
 from gpt.block import Block
 import math
 import torch.nn.functional as F
+from dataclasses import asdict
 
 class GPT(nn.Module):
 
     def __init__(self, config):
         super().__init__()
         self.block_size = config.block_size
+
+        try:
+            self.config_dict = asdict(config)
+        except Exception:
+            self.config_dict = getattr(config, "__dict__", None)
 
         self.transformer = nn.ModuleDict(dict(
             wte=nn.Embedding(config.vocab_size, config.n_embd),
@@ -130,3 +136,20 @@ class GPT(nn.Module):
             # append sampled index to the running sequence and continue
             idx = torch.cat((idx, idx_next), dim=1)
         return idx
+
+    def save_weights(self, path, extra: dict | None = None):
+        payload = {
+            "state_dict": self.state_dict(),
+            "meta": {
+                "class": "GPT",
+                "config": self.config_dict
+            }
+        }
+        if extra:
+            payload["meta"].update(extra)
+        torch.save(payload, path)
+
+    def load_weights(self, path, map_location=None, strict: bool = True):
+        ckpt = torch.load(path, map_location=map_location)
+        self.load_state_dict(ckpt["state_dict"], strict=strict)
+        return ckpt.get("meta", {})

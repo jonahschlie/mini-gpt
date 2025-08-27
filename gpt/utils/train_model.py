@@ -2,6 +2,11 @@ from torch.utils.data.dataloader import DataLoader
 from contextlib import nullcontext
 from gpt.utils.dataset import ShakespeareDataset
 import torch
+import os
+
+def ensure_dir(path: str):
+    if path and not os.path.isdir(path):
+        os.makedirs(path, exist_ok=True)
 
 def train_model(model, train_data, valid_data, test_data, config, device):
     block_size = getattr(config, 'block_size', 64)
@@ -11,6 +16,11 @@ def train_model(model, train_data, valid_data, test_data, config, device):
     eval_every_epochs = getattr(config, 'eval_interval_epochs', 2)
     eval_subset_batches = getattr(config, 'eval_subset_batches', 50)
     patience = getattr(config, 'early_stopping_patience', 3)
+
+    save_dir = getattr(config, 'save_dir', 'checkpoints')
+    save_best_weights = getattr(config, 'save_best_weights', True)
+    save_every_eval = getattr(config, 'save_every_eval', False)  # optional „history“ sichern
+    ensure_dir(save_dir)
 
     # Datasets & Loader
     train_ds = ShakespeareDataset(train_data, block_size)
@@ -102,6 +112,10 @@ def train_model(model, train_data, valid_data, test_data, config, device):
             if val_loss < best_val:
                 best_val = val_loss
                 best_epoch = epoch
+                if save_best_weights:
+                    best_w_path = os.path.join(save_dir, "best_weights.pt")
+                    model.save_weights(best_w_path, extra={"epoch": epoch, "val_loss": best_val, "step": global_step})
+                    print(f"[Save] best weights -> {best_w_path}")
             elif epoch - best_epoch >= patience:
                 print(
                     f"[EarlyStop] epoch {epoch}: No improvement {patience} Ep. — best_val={best_val:.4f} in epoch {best_epoch}")
@@ -123,4 +137,7 @@ def train_model(model, train_data, valid_data, test_data, config, device):
             test_steps += 1
     print(f"[TEST] loss={test_total / max(1, test_steps):.4f}")
 
-    return train_losses, val_losses
+    result_paths = {
+        "best_weights": os.path.join(save_dir, "best_weights.pt") if save_best_weights else None,
+    }
+    return train_losses, val_losses, result_paths, (val_loader, test_loader)

@@ -35,3 +35,8 @@ class OwnConfig(GPTConfig):
 
     # Early stopping
     early_stopping_patience = 3
+
+    # Safe weights
+    save_dir = 'weights'
+    save_best_weights = True
+    save_every_eval= False
