@@ -39,4 +39,3 @@ class OwnConfig(GPTConfig):
     # Safe weights
     save_dir = 'weights'
     save_best_weights = True
-    save_every_eval= False
