@@ -23,7 +23,7 @@ def train_model(model, train_data, valid_data, test_data, config, device):
     weight_decay = getattr(config, 'weight_decay', 1e-1)
 
     # checkpoint / save settings
-    save_dir = getattr(config, 'save_dir', 'checkpoints')
+    save_dir = getattr(config, 'save_dir', 'weights')
     save_best_weights = getattr(config, 'save_best_weights', True)
     ensure_dir(save_dir)
 
