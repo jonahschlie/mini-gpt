@@ -5,31 +5,31 @@ class GPTConfig:
             setattr(self, key, value)
 
 class OwnConfig(GPTConfig):
-    # Modellarchitektur
+    # architecture
     n_layer = 8
     n_head = 8
     n_embd = 64
 
-    # Dropouts
+    # dropouts
     embd_pdrop = 0.1
     resid_pdrop = 0.1
     attn_pdrop = 0.1
     dropout = 0.1
 
-    # Training
+    # training
     use_torch_compile = True
     device = "mps"
     dataloader_num_workers = 2
-    max_epochs = 10
+    max_epochs = 5
     batch_size = 32
-    block_size = 64
+    block_size = 128
     learning_rate = 6e-4
     betas = (0.9, 0.95)
     weight_decay = 1e-1
-    grad_clip = 1.0  # statt grad_norm_clip
+    grad_clip = 1.0
 
     # Speed/Control
-    max_steps_per_epoch = None
+    max_steps_per_epoch = 5000
     eval_interval_epochs = 1
     eval_subset_batches = None
 
