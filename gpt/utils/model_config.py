@@ -19,8 +19,8 @@ class OwnConfig(GPTConfig):
     # training
     use_torch_compile = True
     device = "mps"
-    dataloader_num_workers = 2
-    max_epochs = 5
+    dataloader_num_workers = 1
+    max_epochs = 30
     batch_size = 32
     block_size = 128
     learning_rate = 6e-4
@@ -29,7 +29,7 @@ class OwnConfig(GPTConfig):
     grad_clip = 1.0
 
     # Speed/Control
-    max_steps_per_epoch = 5000
+    max_steps_per_epoch = 3000
     eval_interval_epochs = 1
     eval_subset_batches = None
 
