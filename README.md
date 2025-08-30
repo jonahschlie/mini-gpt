@@ -784,14 +784,14 @@ These generations show that the GPT model learned meaningful Shakespearean phras
 
    | block_size | val_ppl | test_ppl | time[s] |  
    |------------|---------|----------|---------|  
-   | 32         | 53.708  | 54.777   | 1459.5  |  
-   | 64         | 51.669  | 53.325   | 3027.0  |  
-   | 128        | 53.437  | 56.177   | 4703.4  |  
+   | 32         | 53.510  | 54.192   | 1454.0  |  
+   | 64         | 51.663  | 52.727   | 3434.2  |  
+   | 128        | 52.848  | 56.144   | 5989.9  |  
 
    From this sweep we observed that:  
-- **Smaller context sizes (32)** are computationally the cheapest (≈1459 seconds) but result in higher validation and test perplexities (~53.7 and ~54.8). This shows that while the model trains faster, it struggles more to capture dependencies in the text.  
-- **Larger context sizes (128)** allow the model to capture longer-range dependencies, but at a quadratic increase in compute time (≈4703 seconds). Surprisingly, performance did not improve — validation perplexity actually worsened (~53.4) and test perplexity rose further (~56.2). This suggests that for the Shakespeare dataset, very long context windows may not provide additional useful signal and can even harm generalization due to increased optimization difficulty.  
-- **The best trade-off was found at block_size = 64**, which achieved the lowest validation perplexity (~51.7) and the best test perplexity (~53.3), at a moderate training time (~3027 seconds). This indicates that a medium context length is most effective for this dataset, balancing both efficiency and performance.  
+- **Smaller context sizes (32)** are computationally the cheapest (≈1454 seconds) but result in higher validation and test perplexities (~53.5 and ~54.2). This shows that while the model trains faster, it struggles more to capture dependencies in the text.  
+- **Larger context sizes (128)** allow the model to capture longer-range dependencies, but at a quadratic increase in compute time (≈5980 seconds). Surprisingly, performance did not improve — validation perplexity improved a bit (~52.8) but test perplexity rose further (~56.1). This suggests that for the Shakespeare dataset, very long context windows may not provide additional useful signal and can even harm generalization due to increased optimization difficulty.  
+- **The best trade-off was found at block_size = 64**, which achieved the lowest validation perplexity (~51.7) and the best test perplexity (~52.3), at a moderate training time (~3434 seconds). This indicates that a medium context length is most effective for this dataset, balancing both efficiency and performance.  
 ---
 
 **Conclusion**  
