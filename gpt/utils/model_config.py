@@ -22,7 +22,7 @@ class OwnConfig(GPTConfig):
     dataloader_num_workers = 1
     max_epochs = 30
     batch_size = 32
-    block_size = 128
+    block_size = 64
     learning_rate = 6e-4
     betas = (0.9, 0.95)
     weight_decay = 1e-1

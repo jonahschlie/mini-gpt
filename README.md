@@ -13,10 +13,12 @@ During the course we investigated step by step how GPTs are build inclusive prep
 The repository is mainly structured along the 4 mentioned milestones as you can see below:
 
 ```markdown
-mini-gpt/  
+mini-gpt/
 ├── data/              # shakespeare text data and modern corpus
+├── weights/           # the weights of the trained gpt model
+├── unix/              # contains a notebook for unix and python based tokenization
 ├── bpe/               # Code for BPE (Milestone 1)
-├── models/            # 
+├── models/            # bpe models and classical ngram models
 ├── classical_ngram/   # Classical N-Gram Model implementation (milestone 2)
 ├── neural_ngram/      # Classical and Neural N-Gram Model implementation (milestone 3)
 ├── gpt /              # The GPT implementation (milestone 4)
@@ -54,9 +56,26 @@ What the actual scripts are about will be described detailed in the following te
 ## Technical Report
 
 ### Unix Command
+In the lecture, we were introduced to a Unix one-liner that lowercases the Shakespeare text, tokenizes it into words, and produces a frequency list:
+```bash
+tr 'A-Z' 'a-z' < '../data/shakespeare/Shakespeare_clean_full.txt' | tr -sc 'A-Za-z' '\n' | sort | uniq -c | sort -n -r
+```
+This commmand:
 
+1. Converts all text to lowercase
+2. Splits on any non-alphabetic characters to extract words.
+3. Sorts and counts word occurrences.
+4. Displays the most frequent word first.
 
+To replicate this pipeline in Python, I used NLTK’s regexp_tokenize, which allows custom regular expressions for 
+tokenization. I defined a regex pattern that captures alphabetic words `(\b[A-Za-z]+\b)` and selected punctuation symbols.
+After tokenizing the Shakespeare corpus into lowercase tokens, I counted their frequencies with a simple dictionary and
+sorted the results in descending order.
 
+This approach mirrors the Unix command but is implemented entirely in Python, making it easier to integrate into the rest of my NLP workflow. It also provides more flexibility if I want to change the tokenization rules or extend the analysis later.
+
+The Python implementation of this replication is included in the repository under:
+unix/unix_command_python_nltk.ipynb
 ---
 ### Byte Pair Encoding
 ###### Byte Pair Encoder Class
@@ -463,3 +482,318 @@ Second we then generated a sequence with both of the models and compared them.
 
 
 ### GPT
+###### NewGELU Class
+
+The `NewGELU` module implements the **Gaussian Error Linear Unit (GELU)** activation function.
+
+**How it works**  
+The GELU activation applies a smooth, probabilistic gating to each input value, defined as:
+
+```python
+0.5 * x * (1.0 + torch.tanh(math.sqrt(2.0 / math.pi) * (x + 0.044715 * torch.pow(x, 3.0))))
+```
+
+This approximation is computationally efficient and numerically stable, making it the standard choice in large-scale language models.
+
+Functions:
+
+| Method    | Parameters   | Returns  | Description                                      |
+|-----------|--------------|----------|--------------------------------------------------|
+| `forward` | `x: Tensor`  | `Tensor` | Applies the GELU activation elementwise to input.|
+
+**Input / Output**
+
+- **Input**: Tensor of arbitrary shape.  
+- **Output**: Tensor of the same shape, with each element transformed by the GELU function.
+
+This activation provides smoother behavior than ReLU, which helps stabilize training and improves performance in Transformer-based models such as GPT.
+
+---
+
+###### SelfAttention Class
+
+The `SelfAttention` module implements **multi-head masked self-attention** with an output projection, as used in GPT-style Transformer blocks. It supports **Flash Attention** (via PyTorch’s `scaled_dot_product_attention`) when available, otherwise it falls back to a standard implementation with an explicit causal mask.  
+This ensures that tokens can only attend to previous positions (autoregressive setup), while providing an efficient fast path when running on modern PyTorch versions.
+
+Constructor:
+
+| Attribute | Type   | Description                                                                 |
+|-----------|--------|-----------------------------------------------------------------------------|
+| `config`  | object | Configuration object that must provide: `n_embd`, `n_head`, `block_size`, `attn_pdrop`, `resid_pdrop`, and `dropout`. |
+
+**Key Config Fields**
+
+| Field         | Type  | Description                                                                    |
+|---------------|-------|--------------------------------------------------------------------------------|
+| `n_embd`      | int   | Embedding dimension (must be divisible by `n_head`).                           |
+| `n_head`      | int   | Number of attention heads.                                                     |
+| `block_size`  | int   | Maximum sequence length; used to create the causal mask in fallback mode.      |
+| `attn_pdrop`  | float | Dropout rate applied to attention weights.                                     |
+| `resid_pdrop` | float | Dropout rate applied to the output projection.                                 |
+| `dropout`     | float | Dropout probability used inside Flash Attention (training mode only).          |
+
+Functions:
+
+| Method    | Parameters       | Returns  | Description                                                                 |
+|-----------|------------------|----------|-----------------------------------------------------------------------------|
+| `forward` | `x: Tensor`      | `Tensor` | Applies multi-head masked self-attention to input `(B, T, C)`, returns same shape. |
+
+**Input / Output**
+
+- **Input**: Tensor of shape `(B, T, C)`  
+  - `B`: batch size  
+  - `T`: sequence length (≤ `block_size`)  
+  - `C`: embedding dimension (`n_embd`)  
+- **Output**: Tensor of shape `(B, T, C)` after attention and projection.
+
+This module forms the core of the Transformer’s ability to model contextual dependencies, ensuring causal masking for autoregressive text generation.
+
+---
+
+###### Block Class
+
+The `Block` module represents a single **Transformer block** as used in GPT-style models.  
+It combines **multi-head masked self-attention** with a **position-wise feed-forward network (MLP)**, each wrapped in a residual connection and pre-activation **Layer Normalization**. This modular design allows stacking multiple blocks to build a deep Transformer.
+
+**Structure**
+
+1. **LayerNorm + SelfAttention**  
+   - Input is normalized with `LayerNorm` before being passed to the `SelfAttention` module.  
+   - Residual connection: the attention output is added back to the input.  
+
+2. **LayerNorm + MLP**  
+   - Another `LayerNorm` is applied before a feed-forward MLP:  
+     - Linear projection expands embeddings to 4× their size.  
+     - Non-linear activation (`NewGELU`).  
+     - Linear projection back to the embedding size.  
+     - Dropout for regularization.  
+   - Residual connection: MLP output is added to the input.  
+
+This layout is known as **pre-norm residual Transformer block**.
+
+Constructor:
+
+| Attribute | Type   | Description                                                            |
+|-----------|--------|------------------------------------------------------------------------|
+| `config`  | object | Configuration object with at least: `n_embd` (embedding size), `resid_pdrop` (dropout rate). |
+
+Functions:
+
+| Method    | Parameters   | Returns  | Description                                                                       |
+|-----------|--------------|----------|-----------------------------------------------------------------------------------|
+| `forward` | `x: Tensor`  | `Tensor` | Applies LayerNorm → SelfAttention (with residual) and LayerNorm → MLP (with residual). |
+
+**Input / Output**
+
+- **Input**: Tensor of shape `(B, T, C)`  
+  - `B`: batch size  
+  - `T`: sequence length  
+  - `C`: embedding dimension (`n_embd`)  
+
+- **Output**: Tensor of shape `(B, T, C)` with contextualized embeddings, ready for the next block.
+
+This class is the core building unit of the GPT model — stacking multiple `Block`s allows the network to capture increasingly complex dependencies in the input sequence.
+
+---
+
+###### GPT Class
+
+The `GPT` module implements a **minimal GPT-style Transformer language model**.  
+It consists of token and positional embeddings, a stack of Transformer `Block`s (each with self-attention and MLP), a final LayerNorm, and a linear **language modeling head** that outputs token probabilities.  
+
+The class also provides utility methods for **text generation** and saving/loading model weights, making it a self-contained building block for training and inference.
+
+**Structure**
+
+1. **Embeddings**  
+   - Token embeddings: map vocabulary indices to dense vectors.  
+   - Positional embeddings: encode position within the sequence.  
+   - Added together and regularized with dropout.  
+
+2. **Transformer Blocks**  
+   - A stack of `Block` modules (each: LayerNorm → SelfAttention + LayerNorm → MLP, both with residuals).  
+
+3. **Final Layers**  
+   - Final LayerNorm.  
+   - Linear projection (`lm_head`) mapping hidden states to vocabulary logits.  
+
+4. **Utility Methods**  
+   - `forward`: compute logits and optional cross-entropy loss.  
+   - `generate`: autoregressively generate tokens given a prompt.  
+   - `save_weights` / `load_weights`: checkpointing functionality.  
+
+Constructor:
+
+| Attribute   | Type   | Description                                                                 |
+|-------------|--------|-----------------------------------------------------------------------------|
+| `config`    | object | Configuration with at least: `vocab_size`, `n_embd`, `n_layer`, `block_size`, `embd_pdrop`. |
+
+Functions:
+
+| Method          | Parameters                                                                                                 | Returns  | Description                                                                                          |
+|-----------------|------------------------------------------------------------------------------------------------------------|----------|------------------------------------------------------------------------------------------------------|
+| `forward`       | `idx: LongTensor (B, T)`, `targets: LongTensor (B, T) or None`                                             | `(logits, loss)` | Computes forward pass. Returns logits `(B, T, V)` and optional cross-entropy loss.                   |
+| `generate`      | `idx: LongTensor`, `max_new_tokens: int`, `temperature: float=1.0`, `do_sample: bool=False`, `top_k: int=None` | `LongTensor` | Autoregressively generates tokens, appending `max_new_tokens` to the input sequence.                  |
+| `save_weights`  | `path: str`                                                                                                | None     | Saves model weights and minimal config metadata to a file.                                           |
+| `load_weights`  | `path: str`, `map_location: device=None`, `strict: bool=True`                                              | dict     | Loads model weights from a checkpoint. Returns stored metadata.                                      |
+
+**Input / Output**
+
+- **Input (forward)**:  
+  - `idx`: `(B, T)` token IDs.  
+  - `targets`: optional `(B, T)` token IDs (with `-1` ignored).  
+
+- **Output**:  
+  - `logits`: `(B, T, V)` (vocabulary scores per token).  
+  - `loss`: scalar mean cross-entropy loss (if targets provided).  
+
+This class is the **central model architecture** of the project, replicating the design of GPT in a simplified and minimal form while retaining key features like causal masking, autoregressive generation, and checkpoint handling.
+
+---
+
+###### Util Functions
+Below are the utility functions and classes provided in the gpt folder.
+
+
+**build_model_and_data** (`gpt/utils/build_model_and_data.py`)  
+Loads data, prepares it, and builds the GPT model with a given configuration.
+
+| Method                | Parameters                                                                                       | Returns                                                                    | Description                                                                 |
+|-----------------------|--------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------|-----------------------------------------------------------------------------|
+| `build_model_and_data`| `vocab_size_override=1000, datatype='shakespeare', neural=True, block_size=64`                   | `(encoder, model, device, train_tensor, valid_tensor, test_tensor)`         | Loads raw data → encodes via BPE → flattens into tensors → builds GPT model with `OwnConfig`. |
+
+---
+
+**ShakespeareDataset** (`gpt/utils/dataset.py`)  
+PyTorch `Dataset` to slice a 1D token sequence into fixed-length training examples.
+
+| Method         | Parameters                          | Returns                        | Description                                                                 |
+|----------------|-------------------------------------|--------------------------------|-----------------------------------------------------------------------------|
+| `__len__`      | —                                   | `int`                          | Number of samples (`len(data) - block_size`).                               |
+| `__getitem__`  | `idx: int`                          | `(x: Tensor, y: Tensor)`       | Returns input tokens `x` and targets `y`, where `y` is shifted by one token.|
+
+---
+
+**OwnConfig** (`gpt/utils/model_config.py`)  
+Default configuration object for the GPT model and training loop.
+
+| Attribute                | Type       | Default       | Description                               |
+|--------------------------|------------|---------------|-------------------------------------------|
+| `n_layer`                | int        | 8             | Number of transformer blocks.             |
+| `n_head`                 | int        | 8             | Number of attention heads.                |
+| `n_embd`                 | int        | 64            | Embedding / hidden dimension.             |
+| `embd_pdrop`             | float      | 0.1           | Dropout on embeddings.                    |
+| `resid_pdrop`            | float      | 0.1           | Dropout on residuals.                     |
+| `attn_pdrop`             | float      | 0.1           | Dropout in attention.                     |
+| `dropout`                | float      | 0.1           | General dropout.                          |
+| `use_torch_compile`      | bool       | True          | Enable PyTorch 2.0 `compile`.             |
+| `device`                 | str        | "mps"         | Default device.                           |
+| `dataloader_num_workers` | int        | 1             | Number of DataLoader workers.             |
+| `max_epochs`             | int        | 30            | Max training epochs.                      |
+| `batch_size`             | int        | 32            | Batch size.                               |
+| `block_size`             | int        | 128           | Context length.                           |
+| `learning_rate`          | float      | 6e-4          | learning rate.                            |
+| `betas`                  | tuple      | (0.9, 0.95)   | betas.                                    |
+| `weight_decay`           | float      | 0.1           | weight decay.                             |
+| `grad_clip`              | float      | 1.0           | Gradient clipping norm.                   |
+| `max_steps_per_epoch`    | int or None| 3000          | Limit training steps per epoch.           |
+| `eval_interval_epochs`   | int        | 1             | How often to run validation.              |
+| `eval_subset_batches`    | int or None| None          | Limit validation batches.                 |
+| `early_stopping_patience`| int        | 3             | Stop after N bad epochs.                  |
+| `save_dir`               | str        | "weights"     | Where to save checkpoints.                |
+| `save_best_weights`      | bool       | True          | Save weights with lowest validation loss. |
+
+---
+
+**calc_perplexity** (`gpt/utils/perplexity_calculation.py`)  
+Computes perplexity on a dataset.
+
+| Method            | Parameters                        | Returns | Description                                                                 |
+|-------------------|-----------------------------------|---------|-----------------------------------------------------------------------------|
+| `calc_perplexity` | `model: GPT, data_loader, device` | `float` | Iterates over DataLoader, sums NLL over tokens, returns `exp(mean NLL)`.    |
+
+---
+
+**train_model** (`gpt/utils/train_model.py`)  
+Main training loop for GPT.
+
+| Method        | Parameters                                             | Returns                                                                                 | Description                                                                                                   |
+|---------------|--------------------------------------------------------|-----------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
+| `train_model` | `model, train_data, valid_data, test_data, config, device` | `(train_losses, val_losses, result_paths, (val_loader, test_loader))`                   | Trains GPT with AdamW, mixed precision (if GPU/MPS), runs validation, early stopping, saves best weights.    |
+
+---
+
+###### gpt/main.py
+In the `main.py` for our GPT milestone we implemented three main functionalities:  
+1. Train and evaluate the GPT model.  
+2. Generate text using the trained GPT model.  
+3. Run a simple hyperparameter sweep over different context lengths (`block_size`).  
+
+---
+
+1. **Training and Evaluation** <br>
+   In this mode, the script trains a GPT model from scratch using the Shakespeare dataset (tokenized with my BPE with k= 1000).  
+   Training configuration was defined in the `OwnConfig` class, with the following key hyperparameters:
+
+   - Embedding Dimension: 64  
+   - Number of Layers: 8  
+   - Number of Attention Heads: 8  
+   - Context Length (block_size): 64  
+   - Learning Rate: 6e-4  
+   - Batch Size: 32
+   - Dropout: 0.1  
+   - Early Stopping Patience: 3 epochs  
+   - Device: MPS (Apple Silicon acceleration)  
+
+   During training, the model reports both training and validation loss.  
+   After training, we compute **perplexity** on the validation and test set.  
+
+   ![GPT training vs validation plot](utils/figures/gpt_train_val_loss.png)  
+
+   The model achieved a final **training loss of ~3.4765**, a **validation loss of ~3.9309**,  
+   and a **test perplexity of ~53.601** and a **validation perplexiry of ~51.599**.  
+
+   Early stopping was triggered at **epoch 19**, indicating no further improvement in validation loss since **epoch 16**.
+   The perplexity is much lower than for classical ngram and neural ngram with bpe k=1000!! 
+
+---
+
+2. **Text Generation** <br>
+   In this mode, the script loads the best saved GPT weights (BE CAREFUL: always the last stored weights) and generates text based on a user-provided prompt.  
+   The generation parameters were:
+   - Max New Tokens: 120  
+   - Temperature: 1.0  
+   - Top-k Sampling: 50  
+   - Sampling Enabled (`do_sample=True`)  
+
+   Example outputs:  
+   - Deterministic (greedy):  
+     `"shall if, and let us hear our country to the kingdom. exeunt scene iii. a room in the castle. enter shylock, jessica and launcelot launcelot jessica i am glad of your father's father and my father's house; i am glad of my father's wife: i am not i, my good lord. lorenzo i have you heard me not. portia i am not i, i am glad of my father and my father's eyes: i am glad of my hand
+"`  
+   - Sampling (stochastic):  
+     `"shall ike them to my spirit; but i'll do as live. nurse thou art not, heaven; my hats should not come to this word. juliet go hark to-night. hence, ne'er for my bed blood, indeed for myself. capulet i do rest. nurse o, we wish you to the consider: if we couch a plague no more of itathens and pal: speak it is hiny told there. romeo i pray you with him: so i am glad of a heart that made me:
+"`  
+
+These generations show that the GPT model learned meaningful Shakespearean phrasing. The deterministic output tends to be more coherent but repetitive, while stochastic sampling produces more diverse and creative text at the expense of grammatical stability.  
+
+---
+
+3. **Hyperparameter Sweep: Context Length (`block_size`)** <br>
+   Finally, we implemented a simple sweep over different `block_size` values `{32, 64, 128}`.  
+   For each setting, a new GPT model was trained and evaluated on validation and test perplexity, with wall-clock time measured.  
+
+   | block_size | val_ppl | test_ppl | time[s] |  
+   |------------|---------|----------|---------|  
+   | 32         | 53.708  | 54.777   | 1459.5  |  
+   | 64         | 51.669  | 53.325   | 3027.0  |  
+   | 128        | 53.437  | 56.177   | 4703.4  |  
+
+   From this sweep we observed that:  
+- **Smaller context sizes (32)** are computationally the cheapest (≈1459 seconds) but result in higher validation and test perplexities (~53.7 and ~54.8). This shows that while the model trains faster, it struggles more to capture dependencies in the text.  
+- **Larger context sizes (128)** allow the model to capture longer-range dependencies, but at a quadratic increase in compute time (≈4703 seconds). Surprisingly, performance did not improve — validation perplexity actually worsened (~53.4) and test perplexity rose further (~56.2). This suggests that for the Shakespeare dataset, very long context windows may not provide additional useful signal and can even harm generalization due to increased optimization difficulty.  
+- **The best trade-off was found at block_size = 64**, which achieved the lowest validation perplexity (~51.7) and the best test perplexity (~53.3), at a moderate training time (~3027 seconds). This indicates that a medium context length is most effective for this dataset, balancing both efficiency and performance.  
+---
+
+**Conclusion**  
+The GPT implementation demonstrates how transformer-based models outperform classical and neural n-gram models in capturing long-range dependencies in text. With early stopping, dropout, and careful hyperparameter tuning, the model achieved competitive perplexity while maintaining training efficiency. The text generation results confirm the ability of GPT to produce coherent Shakespearean-like language.
+
