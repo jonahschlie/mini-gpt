@@ -22,7 +22,7 @@ mini-gpt/
 ├── classical_ngram/   # Classical N-Gram Model implementation (milestone 2)
 ├── neural_ngram/      # Classical and Neural N-Gram Model implementation (milestone 3)
 ├── gpt /              # The GPT implementation (milestone 4)
-├── utils/             # Functions that are used across all milestones  
+├── utils/             # Functions that are used across all milestones & plots  
 ├── requirements.txt/  # list of needed python packages to run the code 
 ├── main.py            # The whole GPT pipeline + test generation
 └── README.md          # Technical Report

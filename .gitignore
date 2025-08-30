@@ -3,10 +3,6 @@ __pycache__/
 *.py[codz]
 *$py.class
 
-# models
-models/*
-
-playground/*
 
 # IDEA
 .idea/
