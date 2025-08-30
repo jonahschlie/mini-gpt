@@ -89,7 +89,7 @@ def perplexity_comparison(training_data, valid_data, test_data):
 
         for k in range(0,2200, step):
             # Train BPE with current k
-            _, training_tokens, _, test_tokens = prepare_data(training_data, valid_data, test_data, vocab_size=k, neural=False)
+            _,_, training_tokens, _, test_tokens = prepare_data(training_data, valid_data, test_data, vocab_size=k, neural=False)
 
             # Train N-gram on BPE tokens
             ngram = NGramModel(n=size)

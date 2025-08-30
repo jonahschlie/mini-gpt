@@ -1,6 +1,6 @@
 ## What is this repository about?
 
-This repository constitutes the final assigment for the course "Buildung GPT from scratch" taught by Prof. Elia Bruni and was submitted by Jonah Schlie, William Shelor, Zeynep Koçak and Yash Saraswat. 
+This repository constitutes the final assigment for the course "Buildung GPT from scratch" taught by Prof. Elia Bruni and was submitted by Jonah Schlie. 
 
 During the course we investigated step by step how GPTs are build inclusive preprocessing, preceding language models before the modern Transformer Achitecture came up, and finally the transformer based mini GPT. The course and therefore the repo as well are structured in 4 milestones which were implemented by us. 
 1. Byte Pair Encoder
@@ -79,7 +79,7 @@ unix/unix_command_python_nltk.ipynb
 ---
 ### Byte Pair Encoding
 ###### Byte Pair Encoder Class
-We implemented the Byte Pair Encoder as a Python class which is structured as followed:
+I implemented the Byte Pair Encoder as a Python class which is structured as followed:
 
 Constructor:
 
@@ -102,7 +102,7 @@ Functions
 | load              | filepath: str                            | None    | Load model countings, vocab size, and stoi/itos dictionaries from JSON for efficiency. |
 
 ###### Util Functions
-For granularity why sources some of the used functionality out to static methods. By this we wanted to keep the code clean and maintainable:
+For granularity I sourced some of the used functionality out to static methods. By this I wanted to keep the code clean and maintainable:
 
 *normalization.py* <br>
 This function normalizes text by converting it to lowercase, removing line breaks, replacing consecutive spaces with underscores, and filtering out characters from Chinese, Japanese, Korean, Arabic, and Hebrew scripts.
@@ -125,12 +125,12 @@ This function takes the most frequent token pair and merges all its occurrences 
 | merge_token_pair_in_corpus   | corpus: list of str, token_pair: tuple | list    | Merges all occurrences of the specified token pair into a single token within the tokenized corpus and returns the updated tokenized corpus.                                                                             |
 
 ###### bpe/main.py
-In the bpe/main.py file, we investigated two aspects related to the **generalization capability** of BPE using the **Tokens per Word (TPW)** metric.
+In the bpe/main.py file, I investigated two aspects related to the **generalization capability** of BPE using the **Tokens per Word (TPW)** metric.
 
  **1. Generalization Loss within Shakespeare Texts** <br>
-First, we wanted to determine the value of **k** (the number of BPE merges) at which a tokenizer trained on the **training Shakespeare dataset** would start to lose its generalization when evaluated on a **test Shakespeare dataset**.
+First, I wanted to determine the value of **k** (the number of BPE merges) at which a tokenizer trained on the **training Shakespeare dataset** would start to lose its generalization when evaluated on a **test Shakespeare dataset**.
 
-We used a **greedy-like approach** (maybe Pseudocode??):
+I used a **greedy-like approach** (maybe Pseudocode??):
 - Incrementally increase k.
 - Train a BPE tokenizer on the training data.
 - Compute **TPW** for both training and test datasets for comparison.
@@ -138,7 +138,7 @@ We used a **greedy-like approach** (maybe Pseudocode??):
 The **scoring function** was designed to combine both tokenization efficiency and generalization:
 `score = test_tpw * (test_tpw / train_tpw)`
 
-We expected k to be very high with respect to the data size because Shakespeare’s works share a relatively consistent vocabulary and style.
+I expected k to be very high with respect to the data size because Shakespeare’s works share a relatively consistent vocabulary and style.
 
 - The tokens learned on the training data should apply well to the test data.
 - Only at very high k values (where BPE effectively memorizes entire words) should generalization begin to decline, as it starts creating tokens specific to words seen only in training.
@@ -165,16 +165,16 @@ Results for this experiment are shown in the table below.
 
 The table shows that the optimal number of BPE merges (**k**) is around **22,000** before generalization from the training dataset to the test dataset begins to degrade.
 
-We can already observe that the generalization ratio exceeds **1.0** as early as **k = 4,000**, which means that not all tokens learned from the training data transfer perfectly to the test data. However, the **score** continues to improve because the test dataset’s **Tokens per Word (TPW)** decreases significantly, which compensates for the slight loss in generalization, exactly as described by the scoring function.
+One can already observe that the generalization ratio exceeds **1.0** as early as **k = 4,000**, which means that not all tokens learned from the training data transfer perfectly to the test data. However, the **score** continues to improve because the test dataset’s **Tokens per Word (TPW)** decreases significantly, which compensates for the slight loss in generalization, exactly as described by the scoring function.
 
 Only beyond **k > 22,000** does this trend reverse: too many tokens are specialized to the training data and cannot be applied effectively to the test data, resulting in no further score improvements. At this point, the training TPW (1.0458) indicates that BPE has effectively learned nearly every individual word in the training corpus. Consequently, the algorithm stops after three consecutive iterations without improvement and sets **k = 22,000** as the optimal value with respect to generalization.
 
-We are fully aware that such a high **k** is unusual for a corpus of this size, and it is primarily due to the strong stylistic consistency and limited vocabulary variance across Shakespeare’s texts. For this reason, we repeated the experiment with a modern corpus as the test dataset to see how far the tokenizer could generalize to contemporary language. It is important to note that, in practice, one would not use Shakespearean text when building a language model intended exclusively for 
+I am fully aware that such a high **k** is unusual for a corpus of this size, and it is primarily due to the strong stylistic consistency and limited vocabulary variance across Shakespeare’s texts. For this reason, I repeated the experiment with a modern corpus as the test dataset to see how far the tokenizer could generalize to contemporary language. It is important to note that, in practice, one would not use Shakespearean text when building a language model intended exclusively for 
 
 **2. Generalization Loss on Modern English (WikiText-2)** <br>
-Secondly, we repeated the same experiment using a **modern English dataset (WikiText-2)** as the test set.
+Secondly, I repeated the same experiment using a **modern English dataset (WikiText-2)** as the test set.
 
-Here, we expected the **critical value of k (where generalization is lost)** to be much lower. The reason is that a tokenizer trained on Shakespearean English would produce tokens specialized for older language constructs, making it less effective on modern English text.
+Here, I expected the **critical value of k (where generalization is lost)** to be much lower. The reason is that a tokenizer trained on Shakespearean English would produce tokens specialized for older language constructs, making it less effective on modern English text.
 
 Results for this experiment are shown in the table below.
 
@@ -230,7 +230,7 @@ The NGramModel class builds and uses an n-gram language model that learns word s
 
 **Implementation of Laplace-Smoothing, Backoff and Interpolation**
 
-Since Laplace smoothing, backoff, and interpolation are central concepts in classical n-gram models, we include the relevant code here and provide an explanation of how each concept is implemented.
+Since Laplace smoothing, backoff, and interpolation are central concepts in classical n-gram models, I include the relevant code here and provide an explanation of how each concept is implemented.
 
 ```python
         def probability(self, context, word, alpha=0.4):
@@ -249,7 +249,7 @@ Since Laplace smoothing, backoff, and interpolation are central concepts in clas
             if order == 1:
                 prob_order = (self.unigram[word] + 1) / (sum(self.unigram.values()) + self.vocab_size) # laplace smoothing on unigram
             else:
-                context_slice = tuple(context[-(order - 1):]) # get the context we are focusing at (trigram, bigram etc.)
+                context_slice = tuple(context[-(order - 1):]) # get the context I am focusing at (trigram, bigram etc.)
                 count_context = self.context_counts[order].get(context_slice, 0)
                 count_word = self.ngrams[order][context_slice].get(word, 0)
                 if count_word > 0:
@@ -264,14 +264,14 @@ Since Laplace smoothing, backoff, and interpolation are central concepts in clas
 ```
 1. *Laplace Smoothing* <br>
    Laplace smoothing is applied in two scenarios within our code:  
-   - **Unigram probabilities (order = 1):** When the current n-gram order is `1`, meaning no context is used and we only consider individual word frequencies. This ensures even unseen words get a non-zero probability.  
-   - **Backoff:** When the context for a higher-order n-gram is not found, we back off to a smoothed unigram probability scaled by `alpha`.  
+   - **Unigram probabilities (order = 1):** When the current n-gram order is `1`, meaning no context is used and I only consider individual word frequencies. This ensures even unseen words get a non-zero probability.  
+   - **Backoff:** When the context for a higher-order n-gram is not found, I back off to a smoothed unigram probability scaled by `alpha`.  
         ```python
         (self.unigram[word] + 1) / (sum(self.unigram.values()) + self.vocab_size)
         ```
 
 2. *Interpolation* <br>
-   We combine probabilities from multiple n-gram orders (e.g., unigram, bigram, trigram) using predefined interpolation weights stored in `self.lambdas`.  
+   I combine probabilities from multiple n-gram orders (e.g., unigram, bigram, trigram) using predefined interpolation weights stored in `self.lambdas`.  
    This allows the model to balance information from short and long contexts:  
     ```python
     prob += lambda_weight * prob_order
@@ -281,8 +281,8 @@ Since Laplace smoothing, backoff, and interpolation are central concepts in clas
 
 
 3. *Stupid Backoff* <br>
-   When a higher-order n-gram `(context + word)` is not found in the training data, we do not recursively reduce the order step by step.  
-   Instead, we directly back off to the unigram probability, scaled by a constant factor `alpha`:  
+   When a higher-order n-gram `(context + word)` is not found in the training data, I do not recursively reduce the order step by step.  
+   Instead, I directly back off to the unigram probability, scaled by a constant factor `alpha`:  
     ```python
     prob_order = alpha * (self.unigram[word] + 1) / (sum(self.unigram.values()) + self.vocab_size)
     ```  
@@ -312,10 +312,10 @@ The `prepare_data` function initializes a Byte Pair Encoder using the provided `
 <br>
 
 ###### classical_ngram/main.py
-In the classical_ngram/main.py script, we focused on three main tasks. First, we evaluated how perplexity changes for 
+In the classical_ngram/main.py script, I focused on three main tasks. First, I evaluated how perplexity changes for 
 different n‑gram sizes and varying numbers of Byte Pair Encoding (BPE) merges. Second, using a fixed BPE merge size (k = 1000),
-we optimized interpolation weights for n‑gram sizes greater than one to achieve the best balance between different context lengths. 
-Finally, we used one of the interpolation‑optimized models to generate text sequences based on a given context, ensuring 
+I optimized interpolation weights for n‑gram sizes greater than one to achieve the best balance between different context lengths. 
+Finally, I used one of the interpolation‑optimized models to generate text sequences based on a given context, ensuring 
 that the generation respects the chosen n‑gram size.
 
 1. **Perplexity Evaluation of different BPE merges for different N-gram sizes:** <br>
@@ -331,7 +331,7 @@ that the generation respects the chosen n‑gram size.
 
 
 2. **Interpolation weights optimization** <br>
-   We optimized interpolation weights for different n‑gram sizes using a greedy search with patience.
+   I optimized interpolation weights for different n‑gram sizes using a greedy search with patience.
    Weights were initialized equally, then iteratively adjusted one at a time (in small positive or negative steps),
    always re-normalizing them. A new model was trained after each adjustment, and changes were accepted only if they
    reduced validation perplexity. The process stopped when no improvement was seen for several iterations or after
@@ -349,12 +349,11 @@ that the generation respects the chosen n‑gram size.
    | 9-gram       | 0.009 | 0.480 | 0.317 | 0.070 | 0.011 | 0.018 | 0.026 | 0.032 | 0.038 |        | 43.711 |
    | 10-gram      | 0.000 | 0.499 | 0.315 | 0.027 | 0.027 | 0.027 | 0.027 | 0.027 | 0.027 | 0.027  | 43.680 |
 
-   This outcome shows a clear pattern: for all n-gram sizes above 2, the second- and third-order weights (λ₂ and λ₃) dominate, while
-   higher-order weights remain relatively small. A likely explanation is that bigram and trigram models capture most of
-   the useful local word dependencies present in the training data, while longer context windows (4-grams and above) 
-   suffer from data sparsity. In other words, bigrams and trigrams strike the best balance between context information
-   and reliable probability estimates, whereas higher-order n-grams often appear too infrequently to improve predictions
-   consistently.
+   The results reveal a consistent pattern: the bigram and trigram components (λ₂ ≈ 0.47–0.52, λ₃ ≈ 0.29–0.33) carry most of the predictive weight. Starting from the 4-gram model, however, small but stable contributions from higher-order terms appear. These weights (typically in the 0.02–0.18 range) indicate that longer contexts, while sparse, still provide occasional additional information that yields slight improvements in perplexity.
+
+   The progression of best perplexity supports this view: a large drop from 2-gram to 3-gram, further gains at 4- and 5-gram, and then only marginal improvements beyond that point. As the order increases, the weight spreads thinly across many higher-order components, leading to diminishing returns, while bigrams and trigrams remain dominant.
+
+   In short: bigrams and trigrams capture the bulk of useful local dependencies, while higher-order n-grams contribute only modest, incremental benefits, limited by data sparsity in the Shakespeare corpus.
 
    **Disclaimer**: The interpolation weight optimization used here relies on a greedy search with patience. While this
    approach is computationally efficient and often yields good results, it does not guarantee finding the global optimum
@@ -362,13 +361,13 @@ that the generation respects the chosen n‑gram size.
    
 
 3. **Sequence Generation** <br>
-   For sequence generation, we implemented a simple function that uses the trained N-gram model to generate text starting
+   For sequence generation, I implemented a simple function that uses the trained N-gram model to generate text starting
    from a provided seed context. The generation process can run in two modes: deterministic (always picking the most likely
-   next token) or stochastic (sampling from the probability distribution). For our experiments, we chose a trigram model 
+   next token) or stochastic (sampling from the probability distribution). For our experiments, I chose a trigram model 
    (`n=3`) and applied the previously optimized interpolation weights `[0.0, 0.488, 0.507]`. This choice balanced bigram 
    and trigram contexts while avoiding unnecessary reliance on unigrams, which was shown to improve validation perplexity.
 
-   Using deterministic generation with our seed context, we obtained the sentence:  
+   Using deterministic generation with our seed context, I obtained the sentence:  
    `"shall i have a suit is a very good meeting to the moor: i am not to be a man."`  
    When enabling sampling, one run produced a more diverse and creative output:  
    `"shall i would give you not, that how you kiand ood him the receive that thou art weddingd, art no."`  
@@ -429,11 +428,11 @@ The `NeuralNGramTorch` class implements a feedforward neural n-gram language mod
 
 
 ###### neural_ngram/main.py
-In the main.py we did two things. First we trained both of the model (pytorch und numpy) and calculated their perplexity. 
-Second we then generated a sequence with both of the models and compared them.
+In the main.py I did two things. First I trained both of the model (pytorch und numpy) and calculated their perplexity. 
+Second I then generated a sequence with both of the models and compared them.
 
 1. **Numpy Neural Ngram** <br>
-   For the training of the Numpy Neural Ngram we used a BPE with `k=1000` and `n=3` so we can compare the perplexities of this and the
+   For the training of the Numpy Neural Ngram I used a BPE with `k=1000` and `n=3` so I can compare the perplexities of this and the
    classical ngram. Here you can see the model configurations:
    - Embedding Dimension: 64 
    - N-Gram Size: 3 
@@ -451,7 +450,7 @@ Second we then generated a sequence with both of the models and compared them.
    loss plateaued, showing that the model had reached its generalization capacity. The use of early stopping prevented 
    overfitting and ensured that the best-performing weights were preserved. <br>
    <br>
-   Using the trained NumPy-based neural n-gram model, we generated text with two different decoding strategies: <br>
+   Using the trained NumPy-based neural n-gram model, I generated text with two different decoding strategies: <br>
 	- Deterministic (sample = False): `shall i do beseech you, sir, the king's a virtue of cawdor` <br>
     - Stochastic (sample = True): `shall i rather could awake, with you from sence'd by the hill from your hi` <br><br>
    The deterministic decoding shows that the model learned basic structure and context relationships from the training data, 
@@ -474,7 +473,7 @@ Second we then generated a sequence with both of the models and compared them.
    PyTorch handles certain operations under the hood, such as weight initialization, numerical precision, and optimizer behavior,
    which can subtly influence training dynamics even when using the same hyperparameters. <br>
    <br>
-   Using the trained PyTorch-based neural n-gram model, we generated text with two different decoding strategies: <br>
+   Using the trained PyTorch-based neural n-gram model, I generated text with two different decoding strategies: <br>
 	- Deterministic (sample = False): `shall i do not say 'amen, and all the world is the very like, and` <br>
     - Stochastic (sample = True): `shall i bear, and has had been banque there must be man's casca, anto` <br><br>
    
@@ -724,7 +723,7 @@ Main training loop for GPT.
 ---
 
 ###### gpt/main.py
-In the `main.py` for our GPT milestone we implemented three main functionalities:  
+In the `main.py` for our GPT milestone I implemented three main functionalities:  
 1. Train and evaluate the GPT model.  
 2. Generate text using the trained GPT model.  
 3. Run a simple hyperparameter sweep over different context lengths (`block_size`).  
@@ -746,7 +745,7 @@ In the `main.py` for our GPT milestone we implemented three main functionalities
    - Device: MPS (Apple Silicon acceleration)  
 
    During training, the model reports both training and validation loss.  
-   After training, we compute **perplexity** on the validation and test set.  
+   After training, I compute **perplexity** on the validation and test set.  
 
    ![GPT training vs validation plot](utils/figures/gpt_train_val_loss.png)  
 
@@ -779,7 +778,7 @@ These generations show that the GPT model learned meaningful Shakespearean phras
 ---
 
 3. **Hyperparameter Sweep: Context Length (`block_size`)** <br>
-   Finally, we implemented a simple sweep over different `block_size` values `{32, 64, 128}`.  
+   Finally,I implemented a simple sweep over different `block_size` values `{32, 64, 128}`.  
    For each setting, a new GPT model was trained and evaluated on validation and test perplexity, with wall-clock time measured.  
 
    | block_size | val_ppl | test_ppl | time[s] |  
@@ -788,7 +787,7 @@ These generations show that the GPT model learned meaningful Shakespearean phras
    | 64         | 51.663  | 52.727   | 3434.2  |  
    | 128        | 52.848  | 56.144   | 5989.9  |  
 
-   From this sweep we observed that:  
+   From this sweep I observed that:  
 - **Smaller context sizes (32)** are computationally the cheapest (≈1454 seconds) but result in higher validation and test perplexities (~53.5 and ~54.2). This shows that while the model trains faster, it struggles more to capture dependencies in the text.  
 - **Larger context sizes (128)** allow the model to capture longer-range dependencies, but at a quadratic increase in compute time (≈5980 seconds). Surprisingly, performance did not improve — validation perplexity improved a bit (~52.8) but test perplexity rose further (~56.1). This suggests that for the Shakespeare dataset, very long context windows may not provide additional useful signal and can even harm generalization due to increased optimization difficulty.  
 - **The best trade-off was found at block_size = 64**, which achieved the lowest validation perplexity (~51.7) and the best test perplexity (~52.3), at a moderate training time (~3434 seconds). This indicates that a medium context length is most effective for this dataset, balancing both efficiency and performance.  
