@@ -2,7 +2,7 @@
 
 This repository constitutes the final assigment for the course "Buildung GPT from scratch" taught by Prof. Elia Bruni and was submitted by Jonah Schlie. 
 
-During the course we investigated step by step how GPTs are build inclusive preprocessing, preceding language models before the modern Transformer Achitecture came up, and finally the transformer based mini GPT. The course and therefore the repo as well are structured in 4 milestones which were implemented by us. 
+During the course we investigated step by step how GPTs are build inclusive preprocessing, preceding language models before the modern Transformer Achitecture came up, and finally the transformer based mini GPT. The course and therefore the repo as well are structured in 4 milestones which were implemented by me. 
 1. Byte Pair Encoder
 2. Classical N-Gram
 3. Neural N-Gram
@@ -14,7 +14,7 @@ The repository is mainly structured along the 4 mentioned milestones as you can 
 
 ```markdown
 mini-gpt/
-├── data/              # shakespeare text data and modern corpus
+├── data/              # shakespeare text data
 ├── weights/           # the weights of the trained gpt model
 ├── unix/              # contains a notebook for unix and python based tokenization
 ├── bpe/               # Code for BPE (Milestone 1)
@@ -33,16 +33,12 @@ Each milestone folder contains the model implementation, a utils folder with gen
 
 ##### Installation  
 ```bash  
-git clone https://github.com/your-username/mini-gpt.git
+git clone https://github.com/jonahschlie/mini-gpt.git
 cd mini-gpt
 pip install -r requirements.txt
 ```
 
 ##### Running
-To run the main GPT script just use the following command in the repos root directory:
-```bash
-python -m main
-```
 
 To run the main script of each milestone independently use the following command in the repos root directory:
 ```bash
@@ -60,7 +56,7 @@ In the lecture, we were introduced to a Unix one-liner that lowercases the Shake
 ```bash
 tr 'A-Z' 'a-z' < '../data/shakespeare/Shakespeare_clean_full.txt' | tr -sc 'A-Za-z' '\n' | sort | uniq -c | sort -n -r
 ```
-This commmand:
+This command:
 
 1. Converts all text to lowercase
 2. Splits on any non-alphabetic characters to extract words.
@@ -74,9 +70,10 @@ sorted the results in descending order.
 
 This approach mirrors the Unix command but is implemented entirely in Python, making it easier to integrate into the rest of my NLP workflow. It also provides more flexibility if I want to change the tokenization rules or extend the analysis later.
 
-The Python implementation of this replication is included in the repository under:
-unix/unix_command_python_nltk.ipynb
+The Python implementation of this replication is included in the repository under: `unix/unix_command_python_nltk.ipynb`.
+
 ---
+
 ### Byte Pair Encoding
 ###### Byte Pair Encoder Class
 I implemented the Byte Pair Encoder as a Python class which is structured as followed:
@@ -102,7 +99,7 @@ Functions
 | load              | filepath: str                            | None    | Load model countings, vocab size, and stoi/itos dictionaries from JSON for efficiency. |
 
 ###### Util Functions
-For granularity I sourced some of the used functionality out to static methods. By this I wanted to keep the code clean and maintainable:
+For granularity, I sourced some of the used functionality out to static methods. By this I wanted to keep the code clean and maintainable:
 
 *normalization.py* <br>
 This function normalizes text by converting it to lowercase, removing line breaks, replacing consecutive spaces with underscores, and filtering out characters from Chinese, Japanese, Korean, Arabic, and Hebrew scripts.
@@ -130,13 +127,15 @@ In the bpe/main.py file, I investigated two aspects related to the **generalizat
  **1. Generalization Loss within Shakespeare Texts** <br>
 First, I wanted to determine the value of **k** (the number of BPE merges) at which a tokenizer trained on the **training Shakespeare dataset** would start to lose its generalization when evaluated on a **test Shakespeare dataset**.
 
-I used a **greedy-like approach** (maybe Pseudocode??):
+I used a **greedy-like approach**:
 - Incrementally increase k.
 - Train a BPE tokenizer on the training data.
 - Compute **TPW** for both training and test datasets for comparison.
 
 The **scoring function** was designed to combine both tokenization efficiency and generalization:
-`score = test_tpw * (test_tpw / train_tpw)`
+```python
+score = test_tpw * (test_tpw / train_tpw)
+```
 
 I expected k to be very high with respect to the data size because Shakespeare’s works share a relatively consistent vocabulary and style.
 
@@ -169,7 +168,7 @@ One can already observe that the generalization ratio exceeds **1.0** as early a
 
 Only beyond **k > 22,000** does this trend reverse: too many tokens are specialized to the training data and cannot be applied effectively to the test data, resulting in no further score improvements. At this point, the training TPW (1.0458) indicates that BPE has effectively learned nearly every individual word in the training corpus. Consequently, the algorithm stops after three consecutive iterations without improvement and sets **k = 22,000** as the optimal value with respect to generalization.
 
-I am fully aware that such a high **k** is unusual for a corpus of this size, and it is primarily due to the strong stylistic consistency and limited vocabulary variance across Shakespeare’s texts. For this reason, I repeated the experiment with a modern corpus as the test dataset to see how far the tokenizer could generalize to contemporary language. It is important to note that, in practice, one would not use Shakespearean text when building a language model intended exclusively for 
+I am fully aware that such a high **k** is unusual for a corpus of this size, and it is primarily due to the strong stylistic consistency and limited vocabulary variance across Shakespeare’s texts. For this reason, I repeated the experiment with a modern corpus as the test dataset to see how far the tokenizer could generalize to contemporary language. It is important to note that, in practice, one would not use Shakespearean text when building a language model intended exclusively for modern english text generation.
 
 **2. Generalization Loss on Modern English (WikiText-2)** <br>
 Secondly, I repeated the same experiment using a **modern English dataset (WikiText-2)** as the test set.
@@ -303,7 +302,7 @@ where \(N\) is the number of words. A lower perplexity value indicates better pr
 <br>
 
 ###### Util Functions
-*preprocessing.py - prepare_data* <br>
+*preprocessing.py - prepare_data* (This function is located in the root utils folder since it is reused in later milestones, but it is introduced here as this is its first occurrence.) <br>
 The `prepare_data` function initializes a Byte Pair Encoder using the provided `datatype` and `vocab_size`, attempts to load a pre-trained model, and trains a new one if none is found. It then encodes the training, validation, and test datasets into tokenized sequences. Finally, it returns the BPE encoder itself, the number of learned merge operations, and the encoded datasets.
 
 | Method        | Parameters                                                                                                                          | Returns                                        | Description                                                                                                                                                              |
@@ -335,7 +334,7 @@ that the generation respects the chosen n‑gram size.
    Weights were initialized equally, then iteratively adjusted one at a time (in small positive or negative steps),
    always re-normalizing them. A new model was trained after each adjustment, and changes were accepted only if they
    reduced validation perplexity. The process stopped when no improvement was seen for several iterations or after
-   reaching a maximum iteration limit. This was repeated for n‑gram sizes 2–12.
+   reaching a maximum iteration limit. This was repeated for n‑gram sizes 2–10.
 
    | N-gram Order | λ₁    | λ₂    | λ₃    | λ₄    | λ₅    | λ₆    | λ₇    | λ₈    | λ₉    | λ₁₀   | Best Perplexity |
    |--------------|-------|-------|-------|-------|-------|-------|-------|-------|-------|--------|-----------------|
@@ -480,6 +479,14 @@ Second I then generated a sequence with both of the models and compared them.
    The deterministic decoding shows that the model learned basic syntactic structure and Shakespearean-style phrasing but produced an incomplete sequence lacking semantic closure, indicating that long-range coherence remains challenging. The stochastic decoding demonstrates the model’s learned probability distribution, generating more diverse but less stable output with some grammatical inconsistencies. Compared to the NumPy neural n‑gram model—which produced slightly more coherent deterministic output (shall i do beseech you, sir, the king's a virtue of cawdor) and similarly creative but unstable stochastic output—the PyTorch model shows slightly lower semantic stability. This difference aligns with the slightly higher perplexity observed in the PyTorch implementation (85.31 vs. 74.90) and is likely influenced by subtle differences in weight initialization, numerical precision, and optimizer behavior in PyTorch, even under identical hyperparameters.
 
 
+   Interestingly, the classical n-gram model achieves a lower perplexity (~44) compared to the neural n-gram (~75) 
+   on the Shakespeare corpus. This is mainly due to the highly repetitive structure and limited vocabulary of Shakespearean 
+   text: character-level or small-context n-grams can capture most of the statistical regularities directly. 
+   In contrast, the neural model, despite being more expressive, introduces additional parameters and requires more 
+   data to generalize effectively. With the relatively small and stylistically narrow training corpus, this additional 
+   capacity does not translate into better performance, leading to higher perplexity than the simpler classical approach.
+
+
 ### GPT
 ###### NewGELU Class
 
@@ -504,8 +511,6 @@ Functions:
 
 - **Input**: Tensor of arbitrary shape.  
 - **Output**: Tensor of the same shape, with each element transformed by the GELU function.
-
-This activation provides smoother behavior than ReLU, which helps stabilize training and improves performance in Transformer-based models such as GPT.
 
 ---
 
@@ -636,16 +641,6 @@ Functions:
 | `save_weights`  | `path: str`                                                                                                | None     | Saves model weights and minimal config metadata to a file.                                           |
 | `load_weights`  | `path: str`, `map_location: device=None`, `strict: bool=True`                                              | dict     | Loads model weights from a checkpoint. Returns stored metadata.                                      |
 
-**Input / Output**
-
-- **Input (forward)**:  
-  - `idx`: `(B, T)` token IDs.  
-  - `targets`: optional `(B, T)` token IDs (with `-1` ignored).  
-
-- **Output**:  
-  - `logits`: `(B, T, V)` (vocabulary scores per token).  
-  - `loss`: scalar mean cross-entropy loss (if targets provided).  
-
 This class is the **central model architecture** of the project, replicating the design of GPT in a simplified and minimal form while retaining key features like causal masking, autoregressive generation, and checkpoint handling.
 
 ---
@@ -723,7 +718,7 @@ Main training loop for GPT.
 ---
 
 ###### gpt/main.py
-In the `main.py` for our GPT milestone I implemented three main functionalities:  
+In the `main.py` for our GPT milestone I implemented three main functionalities which you can choose between via cli:  
 1. Train and evaluate the GPT model.  
 2. Generate text using the trained GPT model.  
 3. Run a simple hyperparameter sweep over different context lengths (`block_size`).  
@@ -794,5 +789,11 @@ These generations show that the GPT model learned meaningful Shakespearean phras
 ---
 
 **Conclusion**  
-The GPT implementation demonstrates how transformer-based models outperform classical and neural n-gram models in capturing long-range dependencies in text. With early stopping, dropout, and careful hyperparameter tuning, the model achieved competitive perplexity while maintaining training efficiency. The text generation results confirm the ability of GPT to produce coherent Shakespearean-like language.
+The GPT implementation demonstrates how transformer-based models capture long-range dependencies in text more effectively
+than neural n‑gram models. In terms of perplexity, GPT clearly outperforms the neural n‑gram (~75) but remains slightly 
+worse than the classical n‑gram (~44). This difference is likely due to the specific properties of the Shakespeare corpus, 
+whose repetitive structure and limited vocabulary favor character‑level or small‑context n‑grams. Despite this, GPT still 
+achieves competitive perplexity, and thanks to early stopping, dropout, and careful hyperparameter tuning, it balances 
+efficiency with generalization. The text generation results confirm its ability to produce coherent, Shakespearean‑like 
+language.
 
