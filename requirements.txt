@@ -1,0 +1,6 @@
+regex~=2024.11.6
+datasets~=3.3.2
+torch~=2.8.0
+matplotlib~=3.10.5
+nltk~=3.9.1
+numpy~=2.3.1
